@@ -74,6 +74,9 @@ impl RegistryAccess {
 
 impl crate::Asset {
     pub fn validate(&self) -> anyhow::Result<()> {
+        if let Self::Kernel { name } = self {
+            crate::ensure_kernel_name(name)?;
+        }
         if let Self::Oci {
             image,
             size_mib,
@@ -85,8 +88,10 @@ impl crate::Asset {
                 "OCI disk size must be 16-32768 MiB"
             );
             let (name, digest) = image
-                .split_once("@sha256:")
-                .ok_or_else(|| anyhow::anyhow!("OCI image must be pinned with @sha256:<digest>"))?;
+                .split_once('@')
+                .map_or((image.as_str(), None), |(name, digest)| {
+                    (name, Some(digest))
+                });
             anyhow::ensure!(
                 !name.is_empty()
                     && image.len() <= 2048
@@ -94,13 +99,34 @@ impl crate::Asset {
                     && name
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b"._-/:".contains(&b))
-                    && !name.contains("://")
-                    && digest.len() == 64
-                    && digest
-                        .bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
-                "invalid digest-pinned OCI image reference"
+                    && !name.contains("://"),
+                "invalid OCI image reference"
             );
+            if let Some(digest) = digest {
+                anyhow::ensure!(
+                    digest
+                        .strip_prefix("sha256:")
+                        .is_some_and(|hex| hex.len() == 64
+                            && hex
+                                .bytes()
+                                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
+                    "OCI digest must be sha256 followed by 64 lowercase hexadecimal characters"
+                );
+            }
+            let last = name.rsplit('/').next().unwrap_or_default();
+            anyhow::ensure!(!last.is_empty(), "OCI repository name is missing");
+            if let Some((repository, tag)) = last.split_once(':') {
+                anyhow::ensure!(
+                    !repository.is_empty()
+                        && !tag.is_empty()
+                        && tag.len() <= 128
+                        && (tag.as_bytes()[0].is_ascii_alphanumeric() || tag.starts_with('_'))
+                        && tag
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b)),
+                    "invalid OCI image tag"
+                );
+            }
             if let Some(registry) = registry {
                 registry.validate()?;
             }

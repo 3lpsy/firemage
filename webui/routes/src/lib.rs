@@ -3,6 +3,8 @@
 pub enum Page {
     Vms,
     Networks,
+    Kernels,
+    Assets,
     Activity,
     Tokens,
     Secrets,
@@ -15,6 +17,8 @@ impl Page {
         match self {
             Self::Vms => "Virtual machines",
             Self::Networks => "Networks",
+            Self::Kernels => "Kernels",
+            Self::Assets => "Assets",
             Self::Activity => "Activity",
             Self::Tokens => "API tokens",
             Self::Secrets => "Secrets",
@@ -36,6 +40,8 @@ impl Page {
         match self {
             Self::Vms => "vms",
             Self::Networks => "networks",
+            Self::Kernels => "kernels",
+            Self::Assets => "assets",
             Self::Activity => "activity",
             Self::Tokens => "tokens",
             Self::Secrets => "secrets",
@@ -47,6 +53,8 @@ impl Page {
     pub fn from_slug(slug: &str) -> Self {
         match slug {
             "networks" => Self::Networks,
+            "kernels" => Self::Kernels,
+            "assets" => Self::Assets,
             "activity" => Self::Activity,
             "tokens" => Self::Tokens,
             "secrets" => Self::Secrets,

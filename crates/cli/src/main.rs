@@ -1,8 +1,11 @@
 mod args;
+mod asset;
 mod commands;
 mod credentials;
+mod kernel;
 mod oidc;
 mod secret;
+mod upload;
 mod vm;
 use args::{Cli, Command};
 use clap::Parser;

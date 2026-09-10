@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Match LiftFG's tier runner: the justfile owns the gate and its order.
 set -euo pipefail
 requested="${1:-check-all}"
 case "$requested" in

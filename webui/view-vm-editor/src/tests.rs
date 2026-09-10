@@ -6,8 +6,7 @@ fn form() -> Form {
         mode: "managed".into(),
         isolation: "jailed".into(),
         socket: String::new(),
-        kernel: "/assets/vmlinux".into(),
-        kernel_sha: String::new(),
+        kernel: "vmlinux".into(),
         source: "local".into(),
         rootfs: "/assets/root.ext4".into(),
         rootfs_sha: String::new(),
@@ -29,18 +28,16 @@ fn guided_offline_definition_omits_network_and_preserves_resources() {
     assert_eq!(spec["memory_mib"], 512);
     assert_eq!(
         spec["kernel"],
-        json!({ "kind" : "local", "path" : "/assets/vmlinux" })
+        json!({ "kind" : "kernel", "name" : "vmlinux" })
     );
 }
 #[test]
-fn remote_assets_preserve_verification_and_oci_keeps_image_reference() {
+fn catalog_kernel_and_oci_reference_are_preserved() {
     let mut input = form();
-    input.kernel = "https://example.test/kernel".into();
-    input.kernel_sha = "ab".repeat(32);
     input.source = "oci".into();
     input.rootfs = format!("example.test/runner@sha256:{}", "a".repeat(64));
     let spec = input.spec().unwrap();
-    assert_eq!(spec["kernel"]["sha256"], "ab".repeat(32));
+    assert_eq!(spec["kernel"]["name"], "vmlinux");
     assert_eq!(spec["rootfs"]["kind"], "oci");
     assert_eq!(
         spec["rootfs"]["image"],
@@ -139,15 +136,86 @@ fn registry_modes_omit_inactive_credentials_and_allow_anonymous_custom_ca() {
 }
 
 #[test]
-fn guided_oci_requires_a_lowercase_pinned_digest() {
+fn guided_oci_accepts_tags_and_checks_explicit_digests() {
+    for image in ["alpine:latest", "registry.example.com/job:stable", "alpine"] {
+        let mut input = form();
+        input.source = "oci".into();
+        input.rootfs = image.into();
+        assert_eq!(input.spec().unwrap()["rootfs"]["image"], image);
+    }
     for image in [
-        "alpine:latest".to_owned(),
         "alpine@sha256:abc".into(),
         format!("alpine@sha256:{}", "A".repeat(64)),
+        "https://example.com/image".into(),
     ] {
         let mut input = form();
         input.source = "oci".into();
         input.rootfs = image;
-        assert!(input.spec().unwrap_err().contains("@sha256"));
+        assert!(input.spec().is_err());
     }
+}
+
+#[test]
+fn guided_kernel_requires_catalog_selection() {
+    for kernel in ["", "/outside/vmlinux", "https://example.com/vmlinux"] {
+        let mut input = form();
+        input.kernel = kernel.into();
+        assert!(input.spec().is_err());
+    }
+}
+
+#[test]
+fn guided_edits_preserve_hidden_settings_and_remove_cleared_fields() {
+    let mut base = form().spec().unwrap();
+    base["attachments"] = json!([{"asset_id":"00000000-0000-0000-0000-000000000001", "destination":"/workspace/config", "mode":420}]);
+    base["files"] = json!([{"path":"input", "content":"keep"}]);
+    base["environment"] = json!({"TOKEN":{"kind":"secret","secret":"api-key"}});
+    base["security"]["pids_max"] = json!(123);
+    base["drives"] = json!([{"id":"data","asset":{"kind":"local","path":"/assets/data.ext4"},"read_only":false}]);
+    base["rootfs"] = json!({"kind":"oci", "image":"alpine:3.22", "size_mib":4096,"registry":{"ca_secret":"registry-ca"}});
+    base["userdata"] = json!("old script");
+    base["network"] = json!({"network":"old"});
+    let mut input = form();
+    input.source = "oci".into();
+    input.rootfs = "alpine:3.22".into();
+    input.registry = super::registry::RegistryForm::from_value(&base["rootfs"]["registry"]);
+    input.memory = "1024".into();
+    let updated = super::spec::merge_guided(&base, input.spec().unwrap());
+    for key in [
+        "attachments",
+        "files",
+        "environment",
+        "drives",
+        "security",
+        "rootfs",
+    ] {
+        assert_eq!(updated[key], base[key], "lost {key}");
+    }
+    assert_eq!(updated["memory_mib"], 1024);
+    assert!(updated.get("network").is_none());
+    assert!(updated.get("userdata").is_none());
+}
+#[test]
+fn toml_draft_preserves_incomplete_guided_inputs() {
+    let mut input = form();
+    input.kernel.clear();
+    input.rootfs.clear();
+    input.memory = "invalid".into();
+    let draft = input.draft().unwrap();
+    assert_eq!(draft["memory_mib"], "invalid");
+    assert_eq!(draft["kernel"]["name"], "");
+    assert!(to_toml(&draft).is_ok());
+}
+
+#[test]
+fn guided_external_edits_preserve_boot_sources() {
+    let mut base = form().spec().unwrap();
+    base["socket"] = json!("/run/external.sock");
+    base["security"]["mode"] = json!("external");
+    let mut input = form();
+    input.mode = "socket".into();
+    input.socket = "/run/external.sock".into();
+    let updated = super::spec::merge_guided(&base, input.spec().unwrap());
+    assert_eq!(updated["kernel"], base["kernel"]);
+    assert_eq!(updated["rootfs"], base["rootfs"]);
 }

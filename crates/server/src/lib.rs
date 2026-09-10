@@ -20,3 +20,7 @@ mod secrets;
 mod egress;
 
 mod socket;
+
+mod kernels;
+
+mod file_assets;

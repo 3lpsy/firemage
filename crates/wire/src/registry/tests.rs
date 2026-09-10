@@ -57,9 +57,12 @@ fn registry_realm_and_secret_references_are_validated() {
 }
 
 #[test]
-fn oci_assets_require_digest_and_bounded_disk_before_definition() {
+fn oci_assets_validate_optional_digest_and_bounded_disk_before_definition() {
     for (image, size) in [
-        ("alpine:latest".to_owned(), 2048),
+        ("alpine:".to_owned(), 2048),
+        ("alpine:-invalid".to_owned(), 2048),
+        ("alpine@sha256:".to_owned(), 2048),
+        (format!("alpine@sha512:{}", "a".repeat(128)), 2048),
         (format!("alpine@sha256:{}", "A".repeat(64)), 2048),
         (format!("image@sha256:{}", "a".repeat(64)), 32769),
         (
@@ -75,4 +78,15 @@ fn oci_assets_require_digest_and_bounded_disk_before_definition() {
     }
     let spec: VmSpec = serde_json::from_value(json!({"name":"anonymous", "rootfs":{"kind":"oci","image":format!("alpine@sha256:{}", "a".repeat(64))}})).unwrap();
     spec.validate().unwrap();
+    for image in [
+        "alpine",
+        "alpine:latest",
+        "registry.example:5000/team/opencode:1.18.30",
+        "registry.example/team/opencode:latest",
+    ] {
+        let spec: VmSpec =
+            serde_json::from_value(json!({"name":"tagged", "rootfs":{"kind":"oci","image":image}}))
+                .unwrap();
+        spec.validate().unwrap();
+    }
 }

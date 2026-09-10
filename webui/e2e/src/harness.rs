@@ -53,6 +53,11 @@ impl Harness {
         std::fs::create_dir(&data)?;
         let assets = directory.path().join("assets");
         std::fs::create_dir(&assets)?;
+        let kernels = directory.path().join("kernels");
+        std::fs::create_dir(&kernels)?;
+        for name in ["vmlinux", "kernel"] {
+            std::fs::write(kernels.join(name), b"browser kernel fixture")?;
+        }
         let db_url = format!("sqlite://{}/database.sqlite?mode=rwc", data.display());
         let db = firemage_queries::connect(&db_url).await?;
         firemage_queries::bootstrap(&db, "admin".into(), firemage_auth::hash_password(PASSWORD)?)
@@ -89,6 +94,8 @@ impl Harness {
                 data_dir: Some(data),
                 firecracker: Some(directory.path().join("intentionally-missing-firecracker")),
                 local_asset_roots: Some(vec![assets]),
+                kernel_dir: Some(kernels),
+                asset_dir: Some(directory.path().join("file-assets")),
                 session_ttl: Some(600),
                 ..Default::default()
             },

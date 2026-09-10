@@ -3,10 +3,12 @@ use firemage_wire::{IsolationMode, VmSpec};
 impl Runtime {
     pub(crate) fn ensure_isolation_policy(&self, spec: &VmSpec) -> anyhow::Result<()> {
         spec.validate()?;
+        if let Some(kernel) = &spec.kernel {
+            self.kernel_name(kernel)?;
+        }
         for asset in spec
-            .kernel
+            .rootfs
             .iter()
-            .chain(spec.rootfs.iter())
             .chain(spec.initrd.iter())
             .chain(spec.drives.iter().map(|drive| &drive.asset))
         {

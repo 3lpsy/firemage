@@ -141,7 +141,6 @@ ci-toolchain:
 toolchain-dispatch ref="master":
     just fj-dispatch toolchain.yml "$1"
 
-# Forgejo helpers follow LiftFG's file/ref/JSON and file/job/watermark conventions.
 fj-dispatch workflow ref="master" inputs="{}":
     @bash ci/fj.sh dispatch "$1" "$2" "$3"
 
@@ -176,7 +175,6 @@ _fj-api method path:
 test-fj:
     @if [[ -f ci/internal/tests/test-fj.py && -f ci/fj.sh ]]; then python3 ci/internal/tests/test-fj.py; else echo 'Private Forgejo checks are not included in this source snapshot.'; fi
 
-# Forgejo container tiers follow LiftFG's tagged CI entrypoints.
 ci-check:
     bash ci/internal/task/ci-tag.sh check
 
@@ -213,7 +211,6 @@ ci-test-tier tier="check-all":
 ci-release-download tag="" infra="no":
     bash ci/internal/release/download-release.sh "$1" "$2"
 
-# Container equivalents retain the native tier names used by LiftFG.
 docker-build-release: docker-release
 
 docker-check-all: docker-verify

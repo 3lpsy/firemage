@@ -14,6 +14,8 @@ firemage-webui-routes = { path = "../routes" }
 firemage-webui-page-login = { path = "../page-login" }
 firemage-webui-page-vms = { path = "../page-vms" }
 firemage-webui-page-networks = { path = "../page-networks" }
+firemage-webui-page-kernels = { path = "../page-kernels" }
+firemage-webui-page-assets = { path = "../page-assets" }
 firemage-webui-page-tokens = { path = "../page-tokens" }
 firemage-webui-page-users = { path = "../page-users" }
 firemage-webui-page-config = { path = "../page-config" }

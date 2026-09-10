@@ -5,6 +5,10 @@ use std::path::PathBuf;
 #[derive(Debug, Default, Clone, Args, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Server {
+    #[arg(long, env = "FIREMAGE_ASSET_DIR")]
+    pub asset_dir: Option<PathBuf>,
+    #[arg(long, env = "FIREMAGE_KERNEL_DIR")]
+    pub kernel_dir: Option<PathBuf>,
     #[arg(long, env = "FIREMAGE_LOCAL_ASSET_ROOTS", value_delimiter = ',')]
     pub local_asset_roots: Option<Vec<PathBuf>>,
     #[arg(long, env = "FIREMAGE_EXTERNAL_SOCKET_ROOTS", value_delimiter = ',')]
@@ -66,6 +70,8 @@ pub struct Server {
 impl Server {
     pub fn merge(self, file: Self) -> Self {
         Self {
+            kernel_dir: self.kernel_dir.or(file.kernel_dir),
+            asset_dir: self.asset_dir.or(file.asset_dir),
             local_asset_roots: self.local_asset_roots.or(file.local_asset_roots),
             external_socket_roots: self.external_socket_roots.or(file.external_socket_roots),
             jailer: self.jailer.or(file.jailer),
@@ -96,6 +102,16 @@ impl Server {
             oidc_issuer: self.oidc_issuer.or(file.oidc_issuer),
             oidc_client_id: self.oidc_client_id.or(file.oidc_client_id),
         }
+    }
+    pub fn asset_dir(&self) -> PathBuf {
+        self.asset_dir
+            .clone()
+            .unwrap_or_else(|| "/var/lib/firemage/assets/files".into())
+    }
+    pub fn kernel_dir(&self) -> PathBuf {
+        self.kernel_dir
+            .clone()
+            .unwrap_or_else(|| "/var/lib/firemage/kernels".into())
     }
     pub fn data_dir(&self) -> PathBuf {
         self.data_dir.clone().unwrap_or_else(|| "data".into())

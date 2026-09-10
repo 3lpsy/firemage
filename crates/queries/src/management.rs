@@ -1,4 +1,4 @@
-use firemage_orm::{activity, credentials, networks, users, vms};
+use firemage_orm::{activity, credentials, file_assets, networks, users, vms};
 use sea_orm::{IntoActiveModel, QueryOrder, QuerySelect, Set, TransactionTrait, prelude::*};
 
 pub async fn update_user(
@@ -78,6 +78,14 @@ pub async fn remove_user(db: &DatabaseConnection, id: &str) -> anyhow::Result<()
                 .await?
                 == 0,
         "remove the user's VMs and networks before deleting the user"
+    );
+    anyhow::ensure!(
+        file_assets::Entity::find()
+            .filter(file_assets::Column::OwnerId.eq(id))
+            .count(&tx)
+            .await?
+            == 0,
+        "remove the user's uploaded assets before deleting the user"
     );
     credentials::Entity::delete_many()
         .filter(credentials::Column::UserId.eq(id))

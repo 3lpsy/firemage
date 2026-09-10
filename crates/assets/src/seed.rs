@@ -28,8 +28,9 @@ pub async fn seed(
         return Ok(None);
     }
     let result = async {
-        stage(files, userdata, &staging).await?;
-        crate::ext4(&staging, &disk, 64, "firemage-seed").await?;
+        let bytes = stage(files, userdata, &staging).await?;
+        let size_mib = 64.max(bytes.div_ceil(1024 * 1024) * 5 / 4 + 16);
+        crate::ext4(&staging, &disk, size_mib, "firemage-seed").await?;
         tokio::fs::set_permissions(&disk, std::fs::Permissions::from_mode(0o600)).await?;
         anyhow::Ok(())
     }
@@ -43,9 +44,10 @@ pub async fn seed(
     result?;
     Ok(Some(disk))
 }
-async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> anyhow::Result<()> {
+async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> anyhow::Result<u64> {
     private_directory(staging).await?;
     let mut setup = String::from("#!/bin/sh\nset -eu\n");
+    let mut total = userdata.map_or(0, |value| value.len() as u64);
     for file in files {
         file.validate()?;
         anyhow::ensure!(
@@ -61,7 +63,15 @@ async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> an
                 base64::engine::general_purpose::STANDARD.decode(&file.content)?
             }
         };
-        anyhow::ensure!(bytes.len() <= 4 * 1024 * 1024, "boot file exceeds 4 MiB");
+        anyhow::ensure!(
+            bytes.len() as u64 <= firemage_wire::FILE_ASSET_MAX_BYTES,
+            "boot file exceeds 32 MiB"
+        );
+        total += bytes.len() as u64;
+        anyhow::ensure!(
+            total <= firemage_wire::SEED_MAX_BYTES,
+            "combined guest boot inputs exceed 128 MiB"
+        );
         private_file(&path, &bytes).await?;
         if let Some(destination) = &file.destination {
             let parent = Path::new(destination)
@@ -87,7 +97,7 @@ async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> an
     }
     private_directory(&staging.join("firemage")).await?;
     private_file(&staging.join("firemage/setup.sh"), setup.as_bytes()).await?;
-    Ok(())
+    Ok(total)
 }
 async fn private_directory(path: &Path) -> anyhow::Result<()> {
     tokio::fs::DirBuilder::new()

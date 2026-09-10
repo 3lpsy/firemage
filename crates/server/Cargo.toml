@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+firemage-kernels = { path = "../kernels" }
 anyhow.workspace = true
 axum.workspace = true
 tokio.workspace = true

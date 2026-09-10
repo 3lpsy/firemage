@@ -20,6 +20,7 @@ pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()
             })
             .collect::<Vec<_>>()
     });
+    let attachments = use_signal(|| firemage_webui_view_asset_attachments::from_spec(&vm["spec"]));
     let userdata = use_signal(|| text(&vm["spec"], "userdata"));
     let mut error = use_signal(String::new);
     let mut busy = use_signal(|| false);
@@ -31,7 +32,11 @@ pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()
                 let prepared = match files.read().iter().enumerate().map(|(index,file)| prepare(file,index)).collect::<Result<Vec<_>,_>>() {
                     Ok(files) => files, Err(message) => { error.set(message); return; }
                 };
+                let attached = match firemage_webui_view_asset_attachments::attachments(&attachments.read()) {
+                    Ok(value) => value, Err(message) => { error.set(message); return; }
+                };
                 let mut spec = vm["spec"].clone(); spec["files"] = json!(prepared);
+                spec["attachments"] = json!(attached);
                 if userdata().is_empty() { spec.as_object_mut().unwrap().remove("userdata"); } else { spec["userdata"] = json!(userdata()); }
                 let path = format!("/v1/vms/{}", text(&vm, "id"));
                 busy.set(true); error.set(String::new());
@@ -44,6 +49,7 @@ pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()
             },
                 div { class: "modal-form-body",
                     Notice { message: error() }
+                    firemage_webui_view_asset_attachments::Attachments { value: attachments }
                     p { class: "small muted", "Copy files into the guest. No host directories are shared." }
                     for index in 0..files.read().len() { FileFields { files, index, error } }
                     button { r#type: "button", onclick: move |_| files.write().push(json!({"path":"","destination":"","content":"","encoding":"utf8","uid":0,"gid":0,"_mode":"0644"})), "+ Add boot file" }

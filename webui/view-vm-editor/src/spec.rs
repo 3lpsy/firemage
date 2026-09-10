@@ -5,7 +5,6 @@ pub struct Form {
     pub isolation: String,
     pub socket: String,
     pub kernel: String,
-    pub kernel_sha: String,
     pub source: String,
     pub rootfs: String,
     pub rootfs_sha: String,
@@ -20,11 +19,22 @@ pub struct Form {
 }
 impl Form {
     pub fn spec(self) -> Result<Value, String> {
-        let vcpus: u8 = self.vcpus.parse().map_err(|_| "vCPUs must be a number")?;
-        let memory: u32 = self.memory.parse().map_err(|_| "Memory must be a number")?;
-        if !(1..=32).contains(&vcpus) || memory < 64 {
+        self.build(false)
+    }
+    pub fn draft(self) -> Result<Value, String> {
+        self.build(true)
+    }
+    fn build(self, is_draft: bool) -> Result<Value, String> {
+        let vcpus = self.vcpus.parse::<u8>();
+        let memory = self.memory.parse::<u32>();
+        if !is_draft
+            && (!vcpus.as_ref().is_ok_and(|v| (1..=32).contains(v))
+                || !memory.as_ref().is_ok_and(|m| *m >= 64))
+        {
             return Err("Use 1–32 vCPUs and at least 64 MiB memory".into());
         }
+        let vcpus = vcpus.map_or_else(|_| json!(self.vcpus), |v| json!(v));
+        let memory = memory.map_or_else(|_| json!(self.memory), |v| json!(v));
         let mut spec = json!(
             { "name" : self.name, "vcpus" : vcpus, "memory_mib" : memory, "boot_args" :
             self.boot_args, "files" : [], "drives" : [] }
@@ -43,17 +53,13 @@ impl Form {
         if self.mode == "socket" {
             spec["socket"] = json!(self.socket);
         } else {
-            if self.kernel.is_empty() || self.rootfs.is_empty() {
+            if !is_draft && (self.kernel.is_empty() || self.rootfs.is_empty()) {
                 return Err("Kernel and root disk are required".into());
             }
-            spec["kernel"] = if self.kernel.starts_with("https://") {
-                json!(
-                    { "kind" : "remote", "url" : self.kernel, "sha256" : self.kernel_sha
-                    }
-                )
-            } else {
-                json!({ "kind" : "local", "path" : self.kernel })
-            };
+            if !is_draft && (self.kernel.contains('/') || self.kernel.contains('\\')) {
+                return Err("Choose a kernel from the kernel library.".into());
+            }
+            spec["kernel"] = json!({"kind":"kernel", "name":self.kernel});
             spec["rootfs"] = match self.source.as_str() {
                 "remote" => {
                     json!(
@@ -62,7 +68,9 @@ impl Form {
                     )
                 }
                 "oci" => {
-                    ensure_oci_reference(&self.rootfs)?;
+                    if !is_draft {
+                        ensure_oci_reference(&self.rootfs)?;
+                    }
                     let mut rootfs =
                         json!({ "kind" : "oci", "image" : self.rootfs, "size_mib" : 2048 });
                     if let Some(registry) = self.registry.value()? {
@@ -86,26 +94,13 @@ impl Form {
 }
 
 fn ensure_oci_reference(image: &str) -> Result<(), String> {
-    let valid = image.split_once("@sha256:").is_some_and(|(name, digest)| {
-        !name.is_empty()
-            && image.len() <= 2048
-            && !name.starts_with('-')
-            && !name.contains("://")
-            && name
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b"._-/:".contains(&b))
-            && digest.len() == 64
-            && digest
-                .bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-    });
-    if !valid {
-        return Err(
-            "OCI image must include @sha256: followed by its 64 lowercase hex digest characters."
-                .into(),
-        );
+    firemage_wire::Asset::Oci {
+        image: image.into(),
+        size_mib: 2048,
+        registry: None,
     }
-    Ok(())
+    .validate()
+    .map_err(|error| error.to_string())
 }
 /// TOML has no null; omitted optional fields preserve the VM wire defaults.
 pub fn to_toml(value: &Value) -> Result<String, String> {
@@ -123,4 +118,51 @@ pub fn to_toml(value: &Value) -> Result<String, String> {
         }
     }
     toml::to_string_pretty(&clean(value)).map_err(|e| e.to_string())
+}
+
+/// Replace guided fields while retaining settings edited elsewhere.
+pub fn merge_guided(base: &Value, generated: Value) -> Value {
+    let mut result = if base.is_object() {
+        base.clone()
+    } else {
+        json!({})
+    };
+    for key in [
+        "name",
+        "vcpus",
+        "memory_mib",
+        "boot_args",
+        "userdata",
+        "network",
+        "socket",
+        "kernel",
+        "rootfs",
+        "security",
+    ] {
+        let Some(next) = generated.get(key) else {
+            if matches!(key, "kernel" | "rootfs") && generated.get("socket").is_some() {
+                continue;
+            }
+            result.as_object_mut().unwrap().remove(key);
+            continue;
+        };
+        if matches!(key, "rootfs" | "security")
+            && result[key].is_object()
+            && (key == "security" || result[key]["kind"] == next["kind"])
+        {
+            let previous = result[key].as_object_mut().unwrap();
+            if key == "rootfs" {
+                previous.remove("registry");
+            }
+            for (field, value) in next.as_object().unwrap() {
+                if key == "rootfs" && field == "size_mib" && previous.contains_key(field) {
+                    continue;
+                }
+                previous.insert(field.clone(), value.clone());
+            }
+        } else {
+            result[key] = next.clone();
+        }
+    }
+    result
 }

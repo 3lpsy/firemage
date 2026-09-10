@@ -41,7 +41,10 @@ impl Runtime {
     pub fn directory(&self, id: &str) -> PathBuf {
         self.config.data_dir().join("vms").join(id)
     }
-    pub async fn define(&self, owner: &str, spec: VmSpec) -> anyhow::Result<Vm> {
+    pub async fn define(&self, owner: &str, mut spec: VmSpec) -> anyhow::Result<Vm> {
+        let _asset_guard = self.lock("file-assets").await;
+        let _kernel_guard = self.lock("kernels").await;
+        self.normalize_kernel(&mut spec)?;
         self.ensure_isolation_policy(&spec)?;
         let _network_guard = self.lock("networks").await;
         self.validate_dependencies(owner, &spec).await?;

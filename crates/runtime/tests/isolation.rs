@@ -143,7 +143,7 @@ async fn unrestricted_raw_api_requires_both_host_permissions_and_never_applies_t
                     };
                     assert_eq!(
                         runtime.ensure_raw_request(&row, &input).await.is_ok(),
-                        enabled && mode_enabled && mode != "jailed",
+                        enabled && mode_enabled && mode != "jailed" && path != "/boot-source",
                         "{mode}: host flag={enabled}, mode allowed={mode_enabled}, {path}"
                     );
                 }

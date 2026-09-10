@@ -47,6 +47,31 @@ pub fn router(app: App) -> Router {
             "/v1/auth/oidc",
             get(oidc::configuration).post(oidc::exchange),
         )
+        .route(
+            "/v1/assets",
+            get(crate::file_assets::list)
+                .post(crate::file_assets::upload)
+                .layer(DefaultBodyLimit::max(
+                    firemage_wire::FILE_ASSET_MAX_BYTES as usize,
+                )),
+        )
+        .route(
+            "/v1/assets/{id}",
+            axum::routing::put(crate::file_assets::alias).delete(crate::file_assets::delete),
+        )
+        .route("/v1/assets/{id}/content", get(crate::file_assets::content))
+        .route("/v1/kernels", get(crate::kernels::list))
+        .route("/v1/kernels/import", post(crate::kernels::import))
+        .route(
+            "/v1/kernels/{name}",
+            axum::routing::put(crate::kernels::alias).delete(crate::kernels::delete),
+        )
+        .route(
+            "/v1/kernels/{name}/content",
+            axum::routing::put(crate::kernels::upload).layer(DefaultBodyLimit::max(
+                firemage_wire::KERNEL_MAX_BYTES as usize,
+            )),
+        )
         .route("/v1/secrets", get(crate::secrets::list))
         .route(
             "/v1/secrets/{name}",

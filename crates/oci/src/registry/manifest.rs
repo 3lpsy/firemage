@@ -4,6 +4,7 @@ use super::{
 };
 use anyhow::{Context, ensure};
 use oci_spec::image::{ImageIndex, ImageManifest};
+use sha2::{Digest, Sha256};
 
 pub(super) const ACCEPT: &str = "application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json";
 const MAX_MANIFEST: u64 = 4 * 1024 * 1024;
@@ -17,6 +18,27 @@ pub(crate) fn architecture() -> anyhow::Result<&'static str> {
 }
 
 impl Registry {
+    async fn resolve_manifest(&mut self) -> anyhow::Result<Vec<u8>> {
+        if let Some(digest) = self.reference.digest().map(str::to_owned) {
+            return self.manifest_bytes(&digest, None).await;
+        }
+        let tag = self.reference.tag().context("missing OCI tag")?;
+        let response = self.get(self.tag_url(tag)?, false).await?;
+        let advertised = response
+            .headers()
+            .get("docker-content-digest")
+            .map(|value| value.to_str().map(str::to_owned))
+            .transpose()
+            .context("invalid registry manifest digest header")?;
+        let bytes = read_bounded(response, MAX_MANIFEST).await?;
+        if let Some(digest) = advertised {
+            verify(&bytes, &digest)?;
+        }
+        let digest = format!("sha256:{:x}", Sha256::digest(&bytes));
+        self.reference = self.reference.clone_with_digest(digest);
+        Ok(bytes)
+    }
+
     async fn manifest_bytes(&mut self, digest: &str, size: Option<u64>) -> anyhow::Result<Vec<u8>> {
         ensure!(
             size.is_none_or(|value| value <= MAX_MANIFEST),
@@ -33,12 +55,7 @@ impl Registry {
     }
 
     pub(crate) async fn manifest(&mut self) -> anyhow::Result<ImageManifest> {
-        let digest = self
-            .reference
-            .digest()
-            .context("missing OCI digest")?
-            .to_owned();
-        let mut bytes = self.manifest_bytes(&digest, None).await?;
+        let mut bytes = self.resolve_manifest().await?;
         let document: serde_json::Value =
             serde_json::from_slice(&bytes).context("invalid OCI manifest")?;
         ensure!(

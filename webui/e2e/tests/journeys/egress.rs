@@ -43,7 +43,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
     h.navigate("Virtual machines").await?;
     h.button("+ Create VM").await?;
     h.fill("vm-name", "proxy-runner").await?;
-    h.fill("vm-kernel", &h.asset("kernel")).await?;
+    h.select_kernel("kernel").await?;
     h.fill("vm-rootfs", &h.asset("root.ext4")).await?;
     SelectElement::new(&h.element(By::Id("vm-network")).await?)
         .await?

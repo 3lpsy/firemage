@@ -1088,3 +1088,29 @@ input[type="file"]::file-selector-button { background:var(--raised); color:var(-
 .value-source a { display:inline-flex; align-items:center; gap:4px; }
 
 body:has(.modal-backdrop) { overflow:hidden; }
+
+/* Kernel choices stay within the server catalog. */
+.kernel-picker { position: relative; margin-bottom: 18px; }
+.kernel-picker > .field { margin-bottom: 6px; }
+.kernel-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+.kernel-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.kernel-dropdown { margin-top: 6px; padding: 12px; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; }
+.kernel-dropdown > input { width: 100%; }
+.kernel-dropdown [role="listbox"] { max-height: 220px; overflow-y: auto; margin: 8px 0; }
+.kernel-option { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; border: 0; text-align: left; }
+.kernel-option[aria-selected="true"], .kernel-option.keyboard-active { background: var(--purple-soft); }
+.kernel-table td:first-child { overflow-wrap: anywhere; }
+
+.vm-attachments { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0; margin: 12px 0; }
+.attachment-row { margin-bottom: 18px; }
+.attachment-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 12px; align-items: end; }
+.attachment-fields .field { margin-bottom: 0; }
+.attachment-fields > button { margin-bottom: 0; }
+.attachment-fields .kernel-picker { margin-bottom: 0; }
+.attachment-fields .kernel-picker > .field { margin-bottom: 9px; }
+.attachment-fields .kernel-trigger { min-height: 38px; }
+.attachment-fields .kernel-dropdown { position: absolute; left: 0; right: 0; z-index: 2; min-width: 260px; }
+.attachment-row details { margin-top: 10px; }
+.attachment-row summary { color: var(--purple); cursor: pointer; font-size: 12px; }
+.attachment-row details .form-grid { margin-top: 12px; }
+@media (max-width: 720px) { .attachment-fields { grid-template-columns: minmax(0, 1fr); } }

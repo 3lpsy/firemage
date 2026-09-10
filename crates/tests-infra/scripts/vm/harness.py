@@ -59,6 +59,9 @@ class Harness:
             assert self.binary.is_file() and os.access(self.binary, os.X_OK), self.binary
             for fixture in ("kernel", "rootfs.ext4"):
                 assert (self.fixtures / fixture).is_file(), f"Missing VM fixture {fixture}"
+            self.kernel_dir = self.directory / "kernels"
+            self.kernel_dir.mkdir(mode=0o700)
+            shutil.copyfile(self.fixtures / "kernel", self.kernel_dir / "kernel")
             self.rootfs = self.directory / "rootfs.ext4"
             prepare(self.fixtures / "rootfs.ext4", self.rootfs)
             self.results.mkdir(parents=True, exist_ok=True)
@@ -96,6 +99,7 @@ class Harness:
             "--jailer-uid-base", str(self.uid_base), "--jailer-uid-count", str(self.uid_count),
             "--jailer-cgroup-parent", self.cgroup_parent,
             "--local-asset-roots", f"{self.fixtures.resolve()},{self.directory}",
+            "--kernel-dir", str(self.kernel_dir),
         ], env=self.env, stdout=self.log, stderr=self.log)
 
         def ready():
@@ -131,7 +135,7 @@ class Harness:
 
     def define(self, name, script, **extra):
         spec = {
-            "name": name, "kernel": {"kind": "local", "path": str(self.fixtures / "kernel")},
+            "name": name, "kernel": {"kind": "kernel", "name": "kernel"},
             "rootfs": {"kind": "local", "path": str(self.rootfs)},
             "boot_args": "console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda rw init=/init",
             "memory_mib": 128, "files": [{"path": "run.sh", "content": script}],

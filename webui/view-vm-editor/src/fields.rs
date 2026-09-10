@@ -4,12 +4,12 @@ use firemage_webui_component_controls::*;
 use firemage_webui_provider_api::get;
 #[derive(Clone, Copy, PartialEq)]
 pub struct Fields {
+    pub attachments: Signal<Vec<firemage_webui_view_asset_attachments::AttachmentForm>>,
     pub name: Signal<String>,
     pub mode: Signal<String>,
     pub isolation: Signal<String>,
     pub socket: Signal<String>,
     pub kernel: Signal<String>,
-    pub kernel_sha: Signal<String>,
     pub source: Signal<String>,
     pub rootfs: Signal<String>,
     pub rootfs_sha: Signal<String>,
@@ -23,14 +23,14 @@ pub struct Fields {
     pub boot_args: Signal<String>,
 }
 #[component]
-pub fn Guided(fields: Fields) -> Element {
+pub fn Guided(fields: Fields, #[props(default)] existing: bool) -> Element {
     let Fields {
+        attachments,
         name,
         mut mode,
         isolation,
         socket,
         kernel,
-        kernel_sha,
         mut source,
         rootfs,
         rootfs_sha,
@@ -53,6 +53,7 @@ pub fn Guided(fields: Fields) -> Element {
             placeholder: "build-runner",
         }
         fieldset {
+            disabled: existing,
             legend {
                 "Runtime"
                 Info { title: "Runtime ownership",
@@ -80,26 +81,13 @@ pub fn Guided(fields: Fields) -> Element {
                 label: "Firecracker socket on host",
                 id: "vm-socket",
                 value: socket,
+                disabled: existing,
                 required: true,
                 placeholder: "/run/firecracker/vm.sock",
             }
         } else {
-            firemage_webui_view_security::IsolationMode { value: isolation }
-            Field {
-                label: "Kernel path or HTTPS URL",
-                id: "vm-kernel",
-                value: kernel,
-                required: true,
-                placeholder: "/var/lib/firemage/assets/vmlinux",
-            }
-            if kernel().starts_with("https://") {
-                Field {
-                    label: "Kernel SHA-256",
-                    id: "vm-kernel-sha",
-                    value: kernel_sha,
-                    required: true,
-                }
-            }
+            if !existing { firemage_webui_view_security::IsolationMode { value: isolation } }
+            crate::kernel::KernelPicker { selected: kernel }
             fieldset {
                 legend { "Root disk source" }
                 div { class: "radio-group",
@@ -120,7 +108,7 @@ pub fn Guided(fields: Fields) -> Element {
             Field {
                 label: match source().as_str() {
                     "remote" => "Root disk HTTPS URL",
-                    "oci" => "OCI image reference with @sha256 digest",
+                    "oci" => "OCI image reference (tag or digest)",
                     _ => "Root disk path on host",
                 },
                 id: "vm-rootfs",
@@ -139,6 +127,7 @@ pub fn Guided(fields: Fields) -> Element {
                 }
             }
         }
+        firemage_webui_view_asset_attachments::Attachments { value: attachments }
         div { class: "form-grid",
             Field {
                 label: "vCPUs",

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+firemage-wire = { path = "../wire" }
 anyhow.workspace = true
 sea-orm.workspace = true
 firemage-orm = { path = "../orm" }

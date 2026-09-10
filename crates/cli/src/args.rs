@@ -26,6 +26,12 @@ pub enum Command {
     Authtoken(Login),
     #[command(subcommand)]
     Secret(crate::secret::Command),
+    /// Manage the server's kernel catalog.
+    #[command(subcommand)]
+    Kernel(crate::kernel::Command),
+    /// Manage reusable VM input files owned by your account.
+    #[command(subcommand)]
+    Asset(crate::asset::Command),
     Logout,
     Whoami,
     #[command(subcommand)]

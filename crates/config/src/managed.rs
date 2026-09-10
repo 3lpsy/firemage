@@ -230,6 +230,8 @@ fn normalized(config: &Server) -> anyhow::Result<serde_json::Value> {
         std::env::current_dir()?.join(directory)
     });
     config.database = Some(config.database());
+    config.kernel_dir = Some(config.kernel_dir());
+    config.asset_dir = Some(config.asset_dir());
     config.session_ttl = Some(config.session_ttl()? as u64);
     if config.unix_socket.is_none() && config.listen.is_none() {
         config.listen = Some("127.0.0.1:8080".into());

@@ -11,3 +11,9 @@ pub use management::*;
 
 mod secrets;
 pub use secrets::*;
+
+mod kernels;
+pub use kernels::*;
+
+mod file_assets;
+pub use file_assets::*;

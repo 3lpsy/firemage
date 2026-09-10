@@ -2,6 +2,14 @@ use crate::Server;
 impl Server {
     pub fn validate(&self) -> anyhow::Result<()> {
         self.session_ttl()?;
+        anyhow::ensure!(
+            self.kernel_dir().is_absolute()
+                && self.kernel_dir().components().all(|part| matches!(
+                    part,
+                    std::path::Component::RootDir | std::path::Component::Normal(_)
+                )),
+            "kernel_dir must be an absolute directory without traversal"
+        );
         for roots in [&self.local_asset_roots, &self.external_socket_roots]
             .into_iter()
             .flatten()
@@ -11,6 +19,14 @@ impl Server {
                 "asset/socket roots must be at most 64 absolute directory paths"
             );
         }
+        anyhow::ensure!(
+            self.asset_dir().is_absolute()
+                && self.asset_dir().components().all(|part| matches!(
+                    part,
+                    std::path::Component::RootDir | std::path::Component::Normal(_)
+                )),
+            "asset_dir must be an absolute directory without traversal"
+        );
         self.validate_unix_socket()?;
         anyhow::ensure!(
             self.jailer_uid_base.is_some() == self.jailer_uid_count.is_some(),

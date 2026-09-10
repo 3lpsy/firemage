@@ -17,3 +17,7 @@ mod isolation;
 
 mod launch;
 mod registry;
+
+mod kernels;
+
+mod file_assets;

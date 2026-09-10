@@ -7,3 +7,4 @@ VM lifecycle, assets, seed inputs, and managed guest networking.
 
 - Defaults to jailed Firecracker with per-VM identities, cgroup v2 limits and confined assets; trusted and external modes require host policy.
 - Verifies jail identity during recovery and uses an isolated helper to extract guest output. Typed snapshots remain in the VM's managed directory in every mode.
+- Kernel catalog references use stable filenames; aliases are display labels. Catalog changes and VM references share a lifecycle lock.

@@ -1,0 +1,55 @@
+# Copy to /etc/firemage/config.toml and select it with firemage -c <path>.
+# CLI options override environment variables, which override this file.
+
+[server]
+# Loopback HTTP for local access or a reverse proxy on the same host.
+listen = "127.0.0.1:8080"
+public_url = "http://127.0.0.1:8080"
+
+# Persistent host storage. The database defaults to firemage.db inside data_dir.
+data_dir = "/var/lib/firemage"
+kernel_dir = "/var/lib/firemage/kernels"
+asset_dir = "/var/lib/firemage/assets/files"
+# database = "sqlite:///var/lib/firemage/firemage.db?mode=rwc"
+
+# Other local disk images and external sockets require explicit directory grants.
+local_asset_roots = []
+external_socket_roots = []
+allow_trusted_vms = false
+allow_external_vms = false
+allow_unrestricted_raw_api = false
+session_ttl = 86400
+
+# Jailed VMs require a host-reserved UID/GID range; choose unused IDs first.
+# jailer = "/usr/local/bin/jailer"
+# jailer_uid_base = 100000
+# jailer_uid_count = 10000
+# jailer_cgroup_parent = "firemage"
+# firecracker = "/usr/local/bin/firecracker"
+
+# For remote access, replace public_url and listen with the examples below.
+# Native TLS requires both files; a non-loopback listener requires native TLS.
+# public_url = "https://firemage.example.com"
+# listen = "0.0.0.0:8443"
+# tls_cert = "/etc/firemage/tls/fullchain.pem"
+# tls_key = "/etc/firemage/tls/private-key.pem"
+
+# Alternatively, remove listen and TLS settings and use an existing socket parent.
+# unix_socket = "/run/firemage/api.sock"
+# unix_socket_mode = "0600"
+
+# OIDC requires issuer and client ID together. Supply any secret via
+# FIREMAGE_OIDC_CLIENT_SECRET rather than storing it in this example.
+# oidc_issuer = "https://identity.example.com"
+# oidc_client_id = "firemage"
+# oidc_ca_cert = "/etc/firemage/identity-ca.pem"
+
+[client]
+url = "http://127.0.0.1:8080"
+# For remote access, replace url with "https://firemage.example.com".
+# ca_cert = "/etc/firemage/server-ca.pem"
+# client_socket = "/run/firemage/api.sock"
+# oidc = true
+
+# Login stores credentials in a separate session file beside this configuration.
+# Use FIREMAGE_APITOKEN for an API token; do not put real tokens in this example.

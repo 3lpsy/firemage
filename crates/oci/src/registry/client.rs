@@ -17,11 +17,9 @@ impl Registry {
         options.validate()?;
         ensure!(image.len() <= 2048, "OCI image reference is too long");
         let reference: Reference = image.parse().context("invalid OCI image reference")?;
-        super::ensure_digest(
-            reference
-                .digest()
-                .context("OCI image must be pinned with @sha256:<digest>")?,
-        )?;
+        if let Some(digest) = reference.digest() {
+            super::ensure_digest(digest)?;
+        }
         let origin = https_url(&format!("https://{}/", reference.resolve_registry()))?;
         let mut builder = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -53,6 +51,22 @@ impl Registry {
         super::ensure_digest(digest)?;
         Ok(self.origin.join(&format!(
             "v2/{}/{kind}/{digest}",
+            self.reference.repository()
+        ))?)
+    }
+
+    pub(super) fn tag_url(&self, tag: &str) -> anyhow::Result<Url> {
+        ensure!(
+            !tag.is_empty()
+                && tag.len() <= 128
+                && (tag.as_bytes()[0].is_ascii_alphanumeric() || tag.starts_with('_'))
+                && tag
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte)),
+            "invalid OCI tag"
+        );
+        Ok(self.origin.join(&format!(
+            "v2/{}/manifests/{tag}",
             self.reference.repository()
         ))?)
     }

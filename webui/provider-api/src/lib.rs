@@ -22,6 +22,36 @@ pub async fn request(
         None => builder.build().map_err(|e| e.to_string())?,
     };
     let response = request.send().await.map_err(|e| e.to_string())?;
+    response_value(response, path).await
+}
+
+pub async fn upload(path: &str, bytes: &[u8], csrf: &str) -> Result<Value, String> {
+    upload_bytes("PUT", path, bytes, csrf).await
+}
+
+pub async fn upload_post(path: &str, bytes: &[u8], csrf: &str) -> Result<Value, String> {
+    upload_bytes("POST", path, bytes, csrf).await
+}
+
+async fn upload_bytes(method: &str, path: &str, bytes: &[u8], csrf: &str) -> Result<Value, String> {
+    if !path.starts_with("/v1/") || path.starts_with("//") {
+        return Err("Invalid API path".into());
+    }
+    let response = gloo_net::http::RequestBuilder::new(path)
+        .method(method.parse().map_err(|_| "Invalid HTTP method")?)
+        .credentials(web_sys::RequestCredentials::SameOrigin)
+        .header("Accept", "application/json")
+        .header("Content-Type", "application/octet-stream")
+        .header("X-CSRF-Token", csrf)
+        .body(js_sys::Uint8Array::from(bytes))
+        .map_err(|e| e.to_string())?
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    response_value(response, path).await
+}
+
+async fn response_value(response: gloo_net::http::Response, path: &str) -> Result<Value, String> {
     let status = response.status();
     let text = response.text().await.map_err(|e| e.to_string())?;
     let value: Value = serde_json::from_str(&text).unwrap_or(Value::Null);

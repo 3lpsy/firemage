@@ -114,6 +114,17 @@ impl Harness {
         self.element(By::XPath(format!("//label[contains(normalize-space(.),'{label}')]/input[@type='radio' and @name='{name}']"))).await?.click().await?;
         Ok(())
     }
+    pub async fn select_kernel(&self, name: &str) -> Result<()> {
+        self.element(By::Id("vm-kernel")).await?.click().await?;
+        self.fill("vm-kernel-search", name).await?;
+        self.element(By::XPath(format!(
+            "//*[@role='option'][.//*[normalize-space(.)='{name}']]"
+        )))
+        .await?
+        .click()
+        .await?;
+        self.absent(By::Id("vm-kernel-search")).await
+    }
     pub async fn screenshot(&self, stage: &str) -> Result<()> {
         let path = self.screenshots.join(format!("{}-{stage}.png", self.name));
         self.driver.screenshot(&path).await?;

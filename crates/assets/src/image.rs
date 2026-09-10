@@ -41,6 +41,7 @@ async fn materialize_inner(
     registry: &crate::RegistryOptions,
 ) -> anyhow::Result<()> {
     match asset {
+        Asset::Kernel { .. } => anyhow::bail!("catalog kernels must be resolved by the runtime"),
         Asset::Local { path } => {
             anyhow::ensure!(
                 path.is_absolute() && path.is_file(),

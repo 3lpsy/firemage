@@ -7,6 +7,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Asset {
+    Kernel {
+        name: String,
+    },
     Local {
         path: PathBuf,
     },
@@ -61,6 +64,8 @@ pub struct VmSpec {
     #[serde(default)]
     pub files: Vec<BootFile>,
     #[serde(default)]
+    pub attachments: Vec<crate::AssetAttachment>,
+    #[serde(default)]
     pub drives: Vec<Drive>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +88,14 @@ impl VmSpec {
         {
             asset.validate()?;
         }
+        anyhow::ensure!(
+            self.rootfs
+                .iter()
+                .chain(self.initrd.iter())
+                .chain(self.drives.iter().map(|drive| &drive.asset))
+                .all(|asset| !matches!(asset, Asset::Kernel { .. })),
+            "catalog kernel references are only valid in the kernel field"
+        );
         self.security.validate(self.vcpus)?;
         anyhow::ensure!(
             self.socket.is_some() == (self.security.mode == crate::IsolationMode::External),
@@ -110,7 +123,7 @@ impl VmSpec {
             "MMDS requires a network interface; use an isolated network"
         );
         anyhow::ensure!(
-            self.files.len() <= 256,
+            self.files.len() + self.attachments.len() <= 256,
             "at most 256 boot files are allowed"
         );
         anyhow::ensure!(
@@ -129,6 +142,24 @@ impl VmSpec {
                 "duplicate or reserved boot file path"
             );
             file.validate()?;
+        }
+        let mut destinations = std::collections::HashSet::new();
+        for destination in self
+            .files
+            .iter()
+            .filter_map(|file| file.destination.as_deref())
+        {
+            anyhow::ensure!(
+                destinations.insert(destination),
+                "duplicate guest file destination"
+            );
+        }
+        for attachment in &self.attachments {
+            attachment.validate()?;
+            anyhow::ensure!(
+                destinations.insert(&attachment.destination),
+                "duplicate guest file destination"
+            );
         }
         let mut ids = std::collections::HashSet::from(["rootfs", "seed"]);
         for drive in &self.drives {

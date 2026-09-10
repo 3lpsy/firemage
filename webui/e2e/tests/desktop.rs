@@ -3,6 +3,14 @@ use firemage_webui_e2e::Harness;
 
 #[tokio::test]
 #[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
+async fn kernel_catalog_and_vm_selection() -> anyhow::Result<()> {
+    let harness = Harness::new("kernels").await?;
+    let result = Harness::guarded(journeys::kernels(&harness)).await;
+    harness.complete(result).await
+}
+
+#[tokio::test]
+#[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
 async fn vm_and_network_management() -> anyhow::Result<()> {
     let harness = Harness::new("vm-network").await?;
     let result = Harness::guarded(journeys::resources(&harness)).await;
@@ -44,5 +52,13 @@ async fn oidc_confidential_client_authentication() -> anyhow::Result<()> {
 async fn egress_secrets_and_boot_inputs() -> anyhow::Result<()> {
     let harness = Harness::new("egress").await?;
     let result = Harness::guarded(journeys::egress(&harness)).await;
+    harness.complete(result).await
+}
+
+#[tokio::test]
+#[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
+async fn asset_library_and_vm_attachments() -> anyhow::Result<()> {
+    let harness = Harness::new("assets").await?;
+    let result = Harness::guarded(journeys::assets(&harness)).await;
     harness.complete(result).await
 }

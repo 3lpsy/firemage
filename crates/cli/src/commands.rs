@@ -21,6 +21,8 @@ pub async fn bootstrap(username: String, config: firemage_config::Server) -> any
 pub async fn run(command: Command, client: &Client) -> anyhow::Result<()> {
     let value: Value = match command {
         Command::Secret(command) => return crate::secret::run(command, client).await,
+        Command::Kernel(command) => return crate::kernel::run(command, client).await,
+        Command::Asset(command) => return crate::asset::run(command, client).await,
         Command::Whoami => client.get("/v1/me").await?,
         Command::Logout => client.post("/v1/auth/logout", &Value::Null).await?,
         Command::Apitoken(command) => match command {

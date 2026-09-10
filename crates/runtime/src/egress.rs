@@ -43,6 +43,11 @@ impl Runtime {
         row: &firemage_orm::vms::Model,
         input: &firemage_wire::RawRequest,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            input.method == "GET"
+                || !(input.path == "/boot-source" || input.path.starts_with("/boot-source/")),
+            "raw boot-source mutations are disabled; select a kernel through the VM configuration"
+        );
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
         let is_unrestricted = self.config.allow_unrestricted_raw_api == Some(true)
             && match spec.security.mode {
@@ -83,6 +88,7 @@ impl Runtime {
         spec: &VmSpec,
     ) -> anyhow::Result<()> {
         self.validate_registry_dependencies(owner, spec).await?;
+        self.validate_asset_attachments(owner, spec).await?;
         if self.is_restricted_network(owner, spec).await? {
             anyhow::ensure!(
                 spec.socket.is_none(),

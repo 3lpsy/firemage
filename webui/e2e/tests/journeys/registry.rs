@@ -13,13 +13,10 @@ pub async fn registry(h: &Harness) -> Result<()> {
     h.navigate("Virtual machines").await?;
     h.button("+ Create VM").await?;
     h.fill("vm-name", "private-image").await?;
-    h.fill("vm-kernel", &h.asset("vmlinux")).await?;
+    h.select_kernel("vmlinux").await?;
     h.radio("asset-source", "OCI image").await?;
-    h.fill(
-        "vm-rootfs",
-        &format!("registry.example.com/jobs/runner@sha256:{}", "a".repeat(64)),
-    )
-    .await?;
+    h.fill("vm-rootfs", "registry.example.com/jobs/runner:review")
+        .await?;
     h.radio("registry-auth", "Bearer token").await?;
     SelectElement::new(&h.element(By::Id("registry-token")).await?)
         .await?
@@ -49,6 +46,7 @@ pub async fn registry(h: &Harness) -> Result<()> {
     );
     h.button("private-image").await?;
     h.button("Configure VM").await?;
+    h.button("Full TOML").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;
     spec.as_table_mut()
         .context("VM configuration must be a table")?

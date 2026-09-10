@@ -14,3 +14,9 @@ pub use egress::*;
 
 mod registry;
 mod security;
+
+mod kernels;
+pub use kernels::*;
+
+mod assets;
+pub use assets::*;

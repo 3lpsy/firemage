@@ -13,9 +13,9 @@ impl Runtime {
         let directory = self.directory(&row.id);
         let rootfs_exists = directory.join("rootfs.ext4").exists();
         for asset in resolved
-            .kernel
+            .rootfs
             .iter_mut()
-            .chain(resolved.rootfs.iter_mut().filter(|_| !rootfs_exists))
+            .filter(|_| !rootfs_exists)
             .chain(resolved.initrd.iter_mut())
             .chain(
                 resolved
@@ -42,12 +42,13 @@ impl Runtime {
             .kernel
             .as_ref()
             .context("kernel required for prepare/start")?;
-        anyhow::ensure!(
-            !matches!(kernel, firemage_wire::Asset::Oci { .. }),
-            "kernel must be a local or remote binary"
-        );
-        self.materialize_asset(&row.owner_id, kernel, &dir.join("kernel"))
-            .await?;
+        {
+            let _guard = self.lock("kernels").await;
+            let name = self.kernel_name(kernel)?;
+            let catalog = firemage_kernels::Catalog::open(&self.config.kernel_dir())?;
+            let destination = dir.join("kernel");
+            tokio::task::spawn_blocking(move || catalog.copy(&name, &destination)).await??;
+        }
         if !dir.join("rootfs.ext4").exists() {
             self.materialize_asset(
                 &row.owner_id,
@@ -83,6 +84,7 @@ impl Runtime {
             required.push("initrd".into());
         }
         if !spec.files.is_empty()
+            || !spec.attachments.is_empty()
             || spec.userdata.is_some()
             || !spec.environment.is_empty()
             || spec.network.is_some()

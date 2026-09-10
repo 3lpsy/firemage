@@ -57,24 +57,73 @@ impl Client {
         path: &str,
         body: Option<&impl Serialize>,
     ) -> anyhow::Result<T> {
+        let mut request = self.authenticated_request(method, path)?;
+        if let Some(body) = body {
+            request = request.json(body);
+        }
+        response_json(request).await
+    }
+    pub async fn put_bytes<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        bytes: Vec<u8>,
+    ) -> anyhow::Result<T> {
+        self.request_bytes("PUT", path, bytes).await
+    }
+    pub async fn post_bytes<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        bytes: Vec<u8>,
+    ) -> anyhow::Result<T> {
+        self.request_bytes("POST", path, bytes).await
+    }
+    pub async fn get_bytes(&self, path: &str, maximum: u64) -> anyhow::Result<Vec<u8>> {
+        let mut response = self
+            .authenticated_request("GET", path)?
+            .send()
+            .await
+            .context("connecting to Firemage")?;
+        let status = response.status();
+        anyhow::ensure!(status.is_success(), "Firemage HTTP {status}");
+        anyhow::ensure!(
+            response.content_length().is_none_or(|size| size <= maximum),
+            "Firemage download exceeds {maximum} bytes"
+        );
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            anyhow::ensure!(
+                (bytes.len() as u64).saturating_add(chunk.len() as u64) <= maximum,
+                "Firemage download exceeds {maximum} bytes"
+            );
+            bytes.extend_from_slice(&chunk);
+        }
+        Ok(bytes)
+    }
+    async fn request_bytes<T: DeserializeOwned>(
+        &self,
+        method: &str,
+        path: &str,
+        bytes: Vec<u8>,
+    ) -> anyhow::Result<T> {
+        response_json(
+            self.authenticated_request(method, path)?
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .body(bytes),
+        )
+        .await
+    }
+    fn authenticated_request(
+        &self,
+        method: &str,
+        path: &str,
+    ) -> anyhow::Result<reqwest::RequestBuilder> {
         let mut request = self
             .http
             .request(method.parse()?, format!("{}{path}", self.base));
         if let Some(token) = &self.token {
             request = request.bearer_auth(token);
         }
-        if let Some(body) = body {
-            request = request.json(body);
-        }
-        let response = request.send().await.context("connecting to Firemage")?;
-        let status = response.status();
-        let text = response.text().await?;
-        anyhow::ensure!(status.is_success(), "Firemage HTTP {status}: {text}");
-        Ok(serde_json::from_str(if text.is_empty() {
-            "null"
-        } else {
-            &text
-        })?)
+        Ok(request)
     }
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> anyhow::Result<T> {
         self.request("GET", path, None::<&Value>).await
@@ -89,4 +138,16 @@ impl Client {
     pub async fn delete(&self, path: &str) -> anyhow::Result<Value> {
         self.request("DELETE", path, None::<&Value>).await
     }
+}
+
+async fn response_json<T: DeserializeOwned>(request: reqwest::RequestBuilder) -> anyhow::Result<T> {
+    let response = request.send().await.context("connecting to Firemage")?;
+    let status = response.status();
+    let text = response.text().await?;
+    anyhow::ensure!(status.is_success(), "Firemage HTTP {status}: {text}");
+    Ok(serde_json::from_str(if text.is_empty() {
+        "null"
+    } else {
+        &text
+    })?)
 }

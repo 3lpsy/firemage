@@ -6,6 +6,10 @@ pub fn Icon(name: String, #[props(default = 18)] size: u32) -> Element {
         "brand" => "M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z",
         "vms" => "M4 4H20V10H4ZM4 14H20V20H4ZM7 7H7.01M7 17H7.01M11 7H17M11 17H17",
         "networks" => "M12 8V13M5 16V13H19V16M9 3H15V8H9ZM2 16H8V21H2ZM16 16H22V21H16Z",
+        "kernels" => {
+            "M6 6H18V18H6ZM9 9H15V15H9ZM9 2V6M15 2V6M9 18V22M15 18V22M2 9H6M2 15H6M18 9H22M18 15H22"
+        }
+        "assets" => "M5 3H14L19 8V21H5ZM14 3V8H19M8 12H16M8 16H16",
         "activity" => "M3 12H7L10 4 14 20 17 12H21",
         "external" => "M14 3H21V10M21 3L10 14M10 3H3V21H21V14",
         "tokens" | "secrets" => {
@@ -20,6 +24,7 @@ pub fn Icon(name: String, #[props(default = 18)] size: u32) -> Element {
         "refresh" => {
             "M3 12A9 9 0 0 1 12 3C15 3 18 5 21 8M21 3V8H16M21 12A9 9 0 0 1 12 21C9 21 6 19 3 16M3 21V16H8"
         }
+        "chevron-down" => "M6 9L12 15L18 9",
         "close" => "M6 6 18 18M6 18 18 6",
         _ => "M4 4H20V20H4Z",
     };

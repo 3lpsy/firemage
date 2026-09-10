@@ -1,0 +1,13 @@
+[package]
+name = "firemage-webui-page-assets"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde_json.workspace = true
+firemage-wire = { path = "../../crates/wire" }
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }

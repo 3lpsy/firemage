@@ -31,3 +31,9 @@ pub use boot::*;
 
 mod security;
 pub use security::*;
+
+mod kernel;
+pub use kernel::*;
+
+mod file_asset;
+pub use file_asset::*;

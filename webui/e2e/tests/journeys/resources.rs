@@ -59,7 +59,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
         "new VMs must default to jailed host isolation"
     );
     h.fill("vm-name", "offline-harness").await?;
-    h.fill("vm-kernel", &h.asset("vmlinux")).await?;
+    h.select_kernel("vmlinux").await?;
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
     h.fill("vm-cpus", "2").await?;
     h.fill("vm-memory", "512").await?;
@@ -80,6 +80,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     super::security::limits(h).await?;
     h.button("Overview").await?;
     h.button("Configure VM").await?;
+    h.button("Full TOML").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;
     let fields = spec.as_table_mut().context("VM TOML must be a table")?;
     fields.insert("name".into(), "offline-edited".into());

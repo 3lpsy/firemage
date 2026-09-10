@@ -1,0 +1,12 @@
+[package]
+name = "firemage-webui-view-asset-attachments"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde_json.workspace = true
+firemage-wire = { path = "../../crates/wire" }
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-provider-api = { path = "../provider-api" }

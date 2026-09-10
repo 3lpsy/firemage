@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Discover native test tiers by workspace path, matching LiftFG's inventory.
 set -euo pipefail
 tier="${1:?missing tree}"
 case "$tier" in crates|webui) ;; *) echo 'Select crates or webui.' >&2; exit 2 ;; esac

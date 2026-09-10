@@ -12,3 +12,4 @@ firemage-webui-provider-auth = { path = "../provider-auth" }
 firemage-webui-component-controls = { path = "../component-controls" }
 firemage-webui-component-value-source = { path = "../component-value-source" }
 base64 = "0.22"
+firemage-webui-view-asset-attachments = { path = "../view-asset-attachments" }
