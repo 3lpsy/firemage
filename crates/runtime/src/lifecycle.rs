@@ -19,8 +19,6 @@ impl Runtime {
                     let is_launch = matches!(action,VmAction::Launch);
                     anyhow::ensure!(matches!(row.state.as_str(),"defined"|"stopped"|"failed") || (is_start && row.state == "ready"), "VM cannot launch from {}",row.state);
                     let spec: VmSpec = serde_json::from_str(&row.spec)?;
-                    self.ensure_isolation_policy(&spec)?;
-                    anyhow::ensure!(!is_launch || spec.security.mode != firemage_wire::IsolationMode::Jailed, "jailed VMs require prepare or start; manual launch requires trusted mode");
                     anyhow::ensure!(!is_launch || !self.is_restricted_network(owner, &spec).await?, "Firemage-only VMs require prepare or start");
                     if row.state != "ready" {
                         row = firemage_queries::set_vm_state(&self.db,row.clone(),"starting",None,None).await?;
@@ -37,20 +35,17 @@ impl Runtime {
                     self.unregister_egress(id).await;
                     let spec: VmSpec = serde_json::from_str(&row.spec)?;
                     if spec.network.is_some() { let _ = firemage_network::remove(id).await; }
-                    self.cleanup_cgroup(&row).await?;
                     Ok("stopped")
                 },
                 VmAction::Snapshot { snapshot_path,memory_path } => {
                     anyhow::ensure!(fc.state().await? == "Paused", "pause VM before snapshotting");
-                    let (snapshot_path, memory_path) = self.snapshot_paths(&row, &snapshot_path, &memory_path).await?;
                     ensure_absolute(&snapshot_path)?; ensure_absolute(&memory_path)?;
-                    self.snapshot_create(&row, &snapshot_path, &memory_path).await?;
+                    fc.call("PUT","/snapshot/create",json!({"snapshot_type":"Full","snapshot_path":snapshot_path,"mem_file_path":memory_path})).await?;
                     self.record_snapshot(&row, &snapshot_path, &memory_path).await?;
                     Ok("paused")
                 },
                 VmAction::Restore { snapshot_path,memory_path } => {
                     anyhow::ensure!(matches!(row.state.as_str(),"defined"|"stopped"), "restore requires a fresh VMM");
-                    let (snapshot_path, memory_path) = self.snapshot_paths(&row, &snapshot_path, &memory_path).await?;
                     self.ensure_snapshot(&row, &snapshot_path, &memory_path).await?;
                     ensure_absolute(&snapshot_path)?; ensure_absolute(&memory_path)?;
                     row = firemage_queries::set_vm_state(&self.db,row.clone(),"starting",None,None).await?;
@@ -59,7 +54,6 @@ impl Runtime {
                     if let Some(net) = &spec.network {
                         self.network_tap(&row, net).await?;
                     }
-                    let (snapshot_path, memory_path) = self.snapshot_import(&row, &snapshot_path, &memory_path).await?;
                     fc.call("PUT","/snapshot/load",json!({"snapshot_path":snapshot_path,"mem_backend":{"backend_type":"File","backend_path":memory_path},"resume_vm":false})).await?; Ok("paused")
                 },
                 VmAction::Metadata { value } => { fc.call("PUT","/mmds",value).await?; Ok(row.state.as_str()) },
@@ -108,30 +102,11 @@ impl Runtime {
             children.remove(&row.id);
         } else {
             let spec: VmSpec = serde_json::from_str(&row.spec)?;
-            if row.pid.is_none() && spec.socket.is_none() {
-                match tokio::net::UnixStream::connect(&row.socket).await {
-                    Err(error)
-                        if matches!(
-                            error.kind(),
-                            std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
-                        ) =>
-                    {
-                        match tokio::fs::remove_file(&row.socket).await {
-                            Ok(()) => {}
-                            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                            Err(error) => return Err(error.into()),
-                        }
-                        return Ok(());
-                    }
-                    Err(error) => return Err(error.into()),
-                    Ok(_) => {
-                        let (pid, start) = crate::process::from_socket(&row.socket).await?;
-                        if spec.security.mode == firemage_wire::IsolationMode::Jailed {
-                            self.ensure_jail_process(row, false).await?;
-                        }
-                        return crate::process::stop(pid, start).await;
-                    }
-                }
+            if row.pid.is_none()
+                && spec.socket.is_none()
+                && !std::path::Path::new(&row.socket).exists()
+            {
+                return Ok(());
             }
             let pid = row
                 .pid
@@ -159,25 +134,8 @@ impl Runtime {
             .directory(id)
             .join(format!("extract-{}", uuid::Uuid::new_v4()));
         let result = async {
-            let spec: VmSpec = serde_json::from_str(&row.spec)?;
-            if spec.security.mode == firemage_wire::IsolationMode::Jailed {
-                let _disk = crate::output_disk::claim_stopped_disk(
-                    &self.directory(id).join("rootfs.ext4"),
-                )?;
-                firemage_assets::extract_jailed(
-                    &self.directory(id).join("rootfs.ext4"),
-                    path,
-                    &destination,
-                )
+            firemage_assets::extract(&self.directory(id).join("rootfs.ext4"), path, &destination)
                 .await?;
-            } else {
-                firemage_assets::extract(
-                    &self.directory(id).join("rootfs.ext4"),
-                    path,
-                    &destination,
-                )
-                .await?;
-            }
             anyhow::ensure!(
                 tokio::fs::metadata(&destination).await?.len() <= 64 * 1024 * 1024,
                 "output file exceeds 64 MiB"

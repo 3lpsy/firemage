@@ -17,14 +17,6 @@ pub struct Harness {
     _provider: Option<MockProvider>,
 }
 impl Harness {
-    pub fn asset(&self, name: &str) -> String {
-        self._directory
-            .path()
-            .join("assets")
-            .join(name)
-            .display()
-            .to_string()
-    }
     pub async fn new(name: &str) -> Result<Self> {
         Self::new_mode(name, false, false).await
     }
@@ -51,8 +43,6 @@ impl Harness {
         let directory = tempfile::Builder::new().prefix("fm-e2e-").tempdir()?;
         let data = directory.path().join("data");
         std::fs::create_dir(&data)?;
-        let assets = directory.path().join("assets");
-        std::fs::create_dir(&assets)?;
         let db_url = format!("sqlite://{}/database.sqlite?mode=rwc", data.display());
         let db = firemage_queries::connect(&db_url).await?;
         firemage_queries::bootstrap(&db, "admin".into(), firemage_auth::hash_password(PASSWORD)?)
@@ -88,7 +78,6 @@ impl Harness {
                 database: Some(db_url),
                 data_dir: Some(data),
                 firecracker: Some(directory.path().join("intentionally-missing-firecracker")),
-                local_asset_roots: Some(vec![assets]),
                 session_ttl: Some(600),
                 ..Default::default()
             },

@@ -153,13 +153,18 @@ pub async fn serve_managed(
         config.tls_cert.is_some() == config.tls_key.is_some(),
         "tls-cert and tls-key must be set together"
     );
-    if let Some(path) = &config.unix_socket {
-        let socket =
-            crate::socket::bind(path, config.unix_socket_mode()?, config.unix_socket_gid).await?;
-        let (listener, _socket_guard) = socket;
+    if let Some(path) = config.unix_socket {
+        crate::ensure!(
+            config.listen.is_none() && config.tls_cert.is_none(),
+            "choose a Unix socket or TCP listener"
+        );
+        let listener = tokio::net::UnixListener::bind(&path)?;
+        use std::os::unix::fs::PermissionsExt;
+        tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).await?;
         axum::serve(listener, app)
             .with_graceful_shutdown(shutdown())
             .await?;
+        tokio::fs::remove_file(path).await?;
     } else {
         let address = config
             .listen

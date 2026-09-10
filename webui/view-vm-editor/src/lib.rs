@@ -23,12 +23,6 @@ pub fn VmEditor(
             "managed".into()
         }
     });
-    let isolation = use_signal(|| {
-        initial["security"]["mode"]
-            .as_str()
-            .unwrap_or("jailed")
-            .to_owned()
-    });
     let socket = use_signal(|| text(&initial, "socket"));
     let kernel = use_signal(|| {
         initial["kernel"]["path"]
@@ -78,7 +72,6 @@ pub fn VmEditor(
         spec::Form {
             name: name(),
             mode: mode(),
-            isolation: isolation(),
             socket: socket(),
             kernel: kernel(),
             kernel_sha: kernel_sha(),
@@ -178,14 +171,13 @@ pub fn VmEditor(
                             rows: 20,
                         }
                         p { class: "muted small",
-                            "All VM settings are available here: assets, drives, network, userdata, boot files, metadata, host isolation, process limits, and external sockets. Isolation mode is fixed at creation."
+                            "All VM settings are available here: assets, drives, network, userdata, boot files, metadata, and external sockets."
                         }
                     } else {
                         fields::Guided {
                             fields: fields::Fields {
                                 name,
                                 mode,
-                                isolation,
                                 socket,
                                 kernel,
                                 kernel_sha,

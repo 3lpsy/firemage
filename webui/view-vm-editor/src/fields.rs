@@ -6,7 +6,6 @@ use firemage_webui_provider_api::get;
 pub struct Fields {
     pub name: Signal<String>,
     pub mode: Signal<String>,
-    pub isolation: Signal<String>,
     pub socket: Signal<String>,
     pub kernel: Signal<String>,
     pub kernel_sha: Signal<String>,
@@ -26,7 +25,6 @@ pub fn Guided(fields: Fields) -> Element {
     let Fields {
         name,
         mut mode,
-        isolation,
         socket,
         kernel,
         kernel_sha,
@@ -73,7 +71,6 @@ pub fn Guided(fields: Fields) -> Element {
             }
         }
         if mode() == "socket" {
-            p { class: "small muted", "External process mode requires server opt-in. You are responsible for host isolation and process limits. Firemage cannot verify them." }
             Field {
                 label: "Firecracker socket on host",
                 id: "vm-socket",
@@ -82,7 +79,6 @@ pub fn Guided(fields: Fields) -> Element {
                 placeholder: "/run/firecracker/vm.sock",
             }
         } else {
-            firemage_webui_view_security::IsolationMode { value: isolation }
             Field {
                 label: "Kernel path or HTTPS URL",
                 id: "vm-kernel",

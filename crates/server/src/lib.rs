@@ -18,5 +18,3 @@ mod management;
 mod secrets;
 
 mod egress;
-
-mod socket;

@@ -23,9 +23,7 @@ impl Runtime {
         memory: &str,
     ) -> anyhow::Result<()> {
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
-        if spec.security.mode != firemage_wire::IsolationMode::Jailed
-            && !self.is_restricted_network(&row.owner_id, &spec).await?
-        {
+        if !self.is_restricted_network(&row.owner_id, &spec).await? {
             return Ok(());
         }
         let record = self.snapshot_record(row, state, memory).await?;
@@ -39,9 +37,7 @@ impl Runtime {
         memory: &str,
     ) -> anyhow::Result<()> {
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
-        if spec.security.mode != firemage_wire::IsolationMode::Jailed
-            && !self.is_restricted_network(&row.owner_id, &spec).await?
-        {
+        if !self.is_restricted_network(&row.owner_id, &spec).await? {
             return Ok(());
         }
         let expected = self.snapshot_record(row, state, memory).await?;
@@ -69,7 +65,7 @@ impl Runtime {
         );
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
         Ok(
-            json!({"vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?, "security": spec.security}),
+            json!({"vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?}),
         )
     }
     fn snapshot_record_path(&self, id: &str, record: &Value) -> anyhow::Result<PathBuf> {

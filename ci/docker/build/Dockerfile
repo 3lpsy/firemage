@@ -22,6 +22,6 @@ RUN case "$PROFILE" in \
     && printf '%s\n' "$PROFILE" > /opt/firemage/profile \
     && chmod -R a+rwX "$CARGO_HOME"
 
-COPY ci/build/container-entry.sh /opt/firemage/container-entry.sh
+COPY ci/internal/build/container-entry.sh /opt/firemage/container-entry.sh
 ENTRYPOINT ["bash", "/opt/firemage/container-entry.sh"]
 CMD ["build"]

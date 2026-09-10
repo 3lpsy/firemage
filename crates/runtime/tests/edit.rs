@@ -13,7 +13,6 @@ async fn failed_preparation_allows_correcting_only_unmaterialized_disks() {
         db.clone(),
         firemage_config::Server {
             data_dir: Some(directory.path().into()),
-            local_asset_roots: Some(vec!["/".into()]),
             ..Default::default()
         },
     );

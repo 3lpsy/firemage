@@ -23,9 +23,7 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     wait_for("guest egress after daemon restart", lambda: "FIREMAGE_EGRESS_RESTART_OK" in harness.console(vm))
 
     harness.action(vm, "pause")
-    snapshots = harness.data / "vms" / vm / "snapshots"
-    snapshots.mkdir(exist_ok=True)
-    state, memory = snapshots / "egress.vmstate", snapshots / "egress.memory"
+    state, memory = harness.directory / "egress.vmstate", harness.directory / "egress.memory"
     action = {"snapshot_path": str(state), "memory_path": str(memory)}
     assert harness.request("POST", f"/v1/vms/{vm}/actions", {"action": "snapshot", **action})["state"] == "paused"
     assert state.is_file() and memory.is_file()

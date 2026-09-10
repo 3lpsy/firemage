@@ -204,7 +204,7 @@ async fn vm_ownership_and_host_permissions_are_enforced() {
     let alice = f.login("alice").await;
     let bob = f.login("bob").await;
     let reader = f.login("reader").await;
-    let spec = json!({"name":"job"});
+    let spec = json!({"name":"job", "kernel":{"kind":"local","path":"/kernel"}, "rootfs":{"kind":"local","path":"/rootfs"}});
     assert_eq!(
         f.request("POST", "/v1/vms", Some(&reader), spec.clone())
             .await

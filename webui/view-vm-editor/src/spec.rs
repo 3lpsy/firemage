@@ -2,7 +2,6 @@ use serde_json::{Value, json};
 pub struct Form {
     pub name: String,
     pub mode: String,
-    pub isolation: String,
     pub socket: String,
     pub kernel: String,
     pub kernel_sha: String,
@@ -28,17 +27,6 @@ impl Form {
             { "name" : self.name, "vcpus" : vcpus, "memory_mib" : memory, "boot_args" :
             self.boot_args, "files" : [], "drives" : [] }
         );
-        let isolation = if self.mode == "socket" {
-            "external"
-        } else {
-            self.isolation.as_str()
-        };
-        if !matches!(isolation, "jailed" | "trusted" | "external")
-            || self.mode != "socket" && isolation == "external"
-        {
-            return Err("Choose a valid host isolation mode.".into());
-        }
-        spec["security"] = json!({"mode": isolation});
         if self.mode == "socket" {
             spec["socket"] = json!(self.socket);
         } else {

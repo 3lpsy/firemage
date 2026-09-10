@@ -1,5 +1,4 @@
 mod extract;
-mod extract_sandbox;
 mod image;
 mod oci;
 mod oci_init;

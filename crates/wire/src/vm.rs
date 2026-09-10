@@ -36,8 +36,6 @@ fn boot_args() -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VmSpec {
-    #[serde(default)]
-    pub security: crate::VmSecurity,
     pub name: String,
     pub kernel: Option<Asset>,
     pub rootfs: Option<Asset>,
@@ -72,11 +70,6 @@ pub struct Drive {
 impl VmSpec {
     pub fn validate(&self) -> anyhow::Result<()> {
         crate::ensure_name(&self.name)?;
-        self.security.validate(self.vcpus)?;
-        anyhow::ensure!(
-            self.socket.is_some() == (self.security.mode == crate::IsolationMode::External),
-            "attached sockets require explicit external isolation mode; external mode requires a socket"
-        );
         crate::validate_environment(&self.environment)?;
         if let Some(egress) = &self.egress {
             egress.validate()?;

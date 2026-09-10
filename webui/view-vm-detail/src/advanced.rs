@@ -19,7 +19,7 @@ pub fn Advanced(id: String, onchanged: EventHandler<()>) -> Element {
         h3 {
             "Firecracker API"
             Info { title: "Raw API access",
-                "Send a request to this VM's Firecracker socket. Jailed VMs permit only operations that preserve managed isolation. Other writes can change runtime state outside the saved definition."
+                "Send a request directly to this VM's Firecracker socket. Writes can change runtime state outside the saved VM definition. Snapshot paths are absolute paths on the server; pause the VM before taking a snapshot."
             }
         }
         Notice { message: error() }
@@ -88,11 +88,7 @@ pub fn Advanced(id: String, onchanged: EventHandler<()>) -> Element {
                 pre { class: "console", "{output}" }
             }
             hr {}
-            h3 { "Snapshots"
-                Info { title: "Snapshot storage",
-                    "Pause the VM before saving a snapshot. Jailed VMs accept filenames in their private snapshot directory and can restore only their own recorded snapshots. Trusted or external VMs require absolute server paths."
-                }
-            }
+            h3 { "Snapshots" }
             form {
                 onsubmit: move |e| {
                     e.prevent_default();
@@ -138,13 +134,13 @@ pub fn Advanced(id: String, onchanged: EventHandler<()>) -> Element {
                     }
                 }
                 Field {
-                    label: "Snapshot filename or path",
+                    label: "Snapshot path on host",
                     id: "snapshot-path",
                     value: snapshot,
                     required: true,
                 }
                 Field {
-                    label: "Memory filename or path",
+                    label: "Memory path on host",
                     id: "snapshot-memory",
                     value: memory,
                     required: true,

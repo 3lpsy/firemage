@@ -41,7 +41,7 @@ impl Runtime {
         self.config.data_dir().join("vms").join(id)
     }
     pub async fn define(&self, owner: &str, spec: VmSpec) -> anyhow::Result<Vm> {
-        self.ensure_isolation_policy(&spec)?;
+        spec.validate()?;
         let _network_guard = self.lock("networks").await;
         self.validate_dependencies(owner, &spec).await?;
         if let Some(net) = &spec.network {
@@ -90,13 +90,6 @@ impl Runtime {
         {
             Ok(state) => {
                 let spec: VmSpec = serde_json::from_str(&row.spec)?;
-                if spec.security.mode == firemage_wire::IsolationMode::Jailed
-                    && let Err(error) = self.ensure_jail_process(&row, state != "Not started").await
-                {
-                    let _ = firemage_network::suspend(&row.id).await;
-                    let pid = row.pid;
-                    return firemage_queries::set_vm_state(&self.db, row, "unknown", Some(format!("VM isolation verification failed: {error}; stop and restart after correcting host configuration")), pid).await;
-                }
                 if row.pid.is_none()
                     && spec.socket.is_none()
                     && let Ok((pid, start)) = crate::process::from_socket(&row.socket).await
@@ -163,12 +156,6 @@ impl Runtime {
         if spec.network.is_some() {
             let _ = firemage_network::remove(id).await;
         }
-        self.cleanup_cgroup(&row).await?;
-        if self.jail_root(&row).exists() {
-            tokio::fs::remove_dir_all(self.jail_root(&row)).await?;
-        }
-        let _ =
-            tokio::fs::remove_file(self.config.data_dir().join("jailer-identities").join(id)).await;
         if self.directory(id).exists() {
             tokio::fs::remove_dir_all(self.directory(id)).await?;
         }

@@ -26,12 +26,7 @@ impl Runtime {
             .effective_egress(&spec)
             .map(|p| p.ports())
             .unwrap_or_default();
-        let uid = if spec.security.mode == firemage_wire::IsolationMode::Jailed {
-            Some(self.jail_uid(&row.id)?)
-        } else {
-            None
-        };
-        let tap = firemage_network::create_with_owner(&row.id, &network, net, &ports, uid).await?;
+        let tap = firemage_network::create_with_ports(&row.id, &network, net, &ports).await?;
         if let Err(error) = self.register_egress(row, &spec, &network).await {
             let _ = firemage_network::remove(&row.id).await;
             return Err(error);

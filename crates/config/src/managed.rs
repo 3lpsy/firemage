@@ -4,7 +4,6 @@ use sha2::{Digest, Sha256};
 use std::{path::PathBuf, sync::Mutex};
 
 const REDACTED: &str = "<redacted>";
-const MUTABLE_FIELDS: &[&str] = &["session_ttl", "public_url", "egress_upstream"];
 #[derive(Debug, Serialize)]
 pub struct ConfigView {
     pub toml: String,
@@ -14,7 +13,6 @@ pub struct ConfigView {
     pub overrides: Vec<String>,
     pub restart_required: Vec<String>,
     pub writable: bool,
-    pub host_only: Vec<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -107,13 +105,6 @@ impl ManagedConfig {
             overrides,
             restart_required,
             writable: self.path.is_some(),
-            host_only: startup
-                .as_object()
-                .expect("server object")
-                .keys()
-                .filter(|field| !MUTABLE_FIELDS.contains(&field.as_str()))
-                .cloned()
-                .collect(),
         })
     }
     pub fn edit(&self, input: ConfigEdit, save: bool) -> anyhow::Result<ConfigView> {
@@ -156,21 +147,6 @@ impl ManagedConfig {
             .map_err(|_| anyhow::anyhow!("invalid or unknown configuration field"))?;
         let effective = self.overrides.clone().merge(config.server);
         effective.validate()?;
-        // Compare file values before overrides so a masked edit cannot weaken a later restart.
-        let previous: Config = toml::from_str(&source)?;
-        let following: Config = toml::from_str(&text)?;
-        let previous = normalized(&previous.server)?;
-        let following = normalized(&following.server)?;
-        for (field, value) in previous.as_object().expect("server object") {
-            anyhow::ensure!(
-                MUTABLE_FIELDS.contains(&field.as_str()) || following[field] == *value,
-                "{field} is host-managed; edit it on the server through TOML, environment, or CLI"
-            );
-        }
-        anyhow::ensure!(
-            original.get("client") == next.get("client"),
-            "client configuration is host-managed and cannot be edited through the API"
-        );
         if save {
             crate::write_private(path, text.as_bytes())?;
             current.session_ttl = effective.session_ttl;

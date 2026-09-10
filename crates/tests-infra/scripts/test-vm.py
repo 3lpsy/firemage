@@ -5,7 +5,6 @@ import signal
 from vm.cases import host_only, lifecycle, offline
 from vm.harness import Harness
 from vm.egress import isolated_egress
-from vm.security import isolated_processes
 
 
 def interrupted(number, _frame):
@@ -15,7 +14,6 @@ def interrupted(number, _frame):
 def main():
     signal.signal(signal.SIGTERM, interrupted)
     with Harness() as harness:
-        isolated_processes(harness)
         offline(harness)
         lifecycle(harness)
         host_only(harness)

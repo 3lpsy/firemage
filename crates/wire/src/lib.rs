@@ -26,6 +26,3 @@ pub use firemage_egress_policy::*;
 
 mod boot;
 pub use boot::*;
-
-mod security;
-pub use security::*;

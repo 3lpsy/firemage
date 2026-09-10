@@ -11,5 +11,3 @@ pub use oidc::*;
 mod boot_inputs;
 mod egress;
 pub use egress::*;
-
-mod security;

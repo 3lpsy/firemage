@@ -4,7 +4,6 @@ fn form() -> Form {
     Form {
         name: "runner".into(),
         mode: "managed".into(),
-        isolation: "jailed".into(),
         socket: String::new(),
         kernel: "/assets/vmlinux".into(),
         kernel_sha: String::new(),
@@ -65,19 +64,4 @@ fn guided_resources_reject_invalid_capacity() {
     let mut input = form();
     input.memory = "63".into();
     assert!(input.spec().is_err());
-}
-
-#[test]
-fn guided_modes_make_host_privileges_explicit() {
-    assert_eq!(form().spec().unwrap()["security"]["mode"], "jailed");
-    let mut trusted = form();
-    trusted.isolation = "trusted".into();
-    assert_eq!(trusted.spec().unwrap()["security"]["mode"], "trusted");
-    let mut external = form();
-    external.mode = "socket".into();
-    external.socket = "/run/vm.sock".into();
-    assert_eq!(external.spec().unwrap()["security"]["mode"], "external");
-    let mut invalid = form();
-    invalid.isolation = "external".into();
-    assert!(invalid.spec().is_err());
 }

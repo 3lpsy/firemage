@@ -34,7 +34,7 @@ rm -f -- "$junit"
 for recipe in "${recipes[@]}"; do
     rm -f -- "$junit"
     if [[ -n "${FIREMAGE_CI_RESULTS_DIR:-}" ]]; then
-        node ci/report/ci-record.mjs "$recipe" just "$recipe"
+        node ci/internal/report/ci-record.mjs "$recipe" just "$recipe"
     else
         just "$recipe"
     fi

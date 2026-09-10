@@ -73,9 +73,6 @@ impl Draft {
                 .collect::<Result<Vec<_>, _>>()?
         );
         if self.upstream.is_object() {
-            for name in ["username", "password"] {
-                ensure_secret(&self.upstream[name], &format!("upstream proxy {name}"))?;
-            }
             egress["upstream"] = clean_optional_sources(&self.upstream);
         } else {
             egress.as_object_mut().unwrap().remove("upstream");
@@ -132,7 +129,6 @@ fn rule(value: &Value) -> Result<Value, String> {
             if name.is_empty() {
                 return Err("Injected headers need a name.".into());
             }
-            ensure_secret(&header["value"], &format!("injected header {name}"))?;
             if values.insert(name, header["value"].clone()).is_some() {
                 return Err("Injected header names must be unique.".into());
             }
@@ -143,14 +139,6 @@ fn rule(value: &Value) -> Result<Value, String> {
     if rule["signing"].is_null() {
         rule.as_object_mut().unwrap().remove("signing");
     } else {
-        for (name, label) in [
-            ("key", "HMAC key"),
-            ("access_key", "AWS access key"),
-            ("secret_key", "AWS secret key"),
-            ("session_token", "AWS session token"),
-        ] {
-            ensure_secret(&rule["signing"][name], label)?;
-        }
         rule["signing"] = clean_optional_sources(&rule["signing"]);
     }
     Ok(rule)
@@ -186,13 +174,6 @@ fn clean_optional_sources(value: &Value) -> Value {
         }
     }
     value
-}
-
-fn ensure_secret(value: &Value, label: &str) -> Result<(), String> {
-    if value.is_object() && value["secret"].as_str().is_none_or(str::is_empty) {
-        return Err(format!("Choose a secret for {label}."));
-    }
-    Ok(())
 }
 
 #[cfg(test)]

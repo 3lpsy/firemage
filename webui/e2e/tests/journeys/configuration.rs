@@ -52,15 +52,7 @@ pub async fn configuration(h: &Harness) -> Result<()> {
     h.fill("server-toml", &toml::to_string_pretty(&document)?)
         .await?;
     h.button("Validate & review").await?;
-    h.text("firecracker_args is host-managed").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
-    document["server"]
-        .as_table_mut()
-        .context("server table")?
-        .remove("firecracker_args");
-    h.fill("server-toml", &toml::to_string_pretty(&document)?)
-        .await?;
-    h.button("Validate & review").await?;
+    h.text("firecracker_args").await?;
     h.modal_button("Save configuration").await?;
     h.absent(By::Css("[role='dialog']")).await?;
     h.text("Configuration saved.").await?;
@@ -71,13 +63,12 @@ pub async fn configuration(h: &Harness) -> Result<()> {
     );
     anyhow::ensure!(
         view["effective"]["firecracker_args"] == serde_json::json!([]),
-        "host-only config changed through the API"
+        "restart-only config was applied before restart"
     );
     anyhow::ensure!(
-        view["host_only"]
-            .as_array()
-            .is_some_and(|fields| fields.iter().any(|field| field == "firecracker_args")),
-        "configuration UI must report host-only fields"
+        view["effective_after_restart"]["firecracker_args"]
+            == serde_json::json!(["--level", "Info"]),
+        "pending configuration was not reported"
     );
     h.button("Effective settings").await?;
     h.text("900").await?;

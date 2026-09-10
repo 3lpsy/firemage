@@ -16,7 +16,6 @@ import urllib.error
 import urllib.request
 
 from .fixture import prepare
-from .security import cleanup_cgroup, unused_identity_range
 
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -36,11 +35,9 @@ class Harness:
         self.binary = Path(os.environ.get("FIREMAGE_TEST_BINARY", ROOT / "dist/firemage")).resolve()
         self.results = Path(os.environ.get("FIREMAGE_CI_RESULTS_DIR", ROOT / "ci-results")).resolve()
         self.fixtures = Path(os.environ.get("FIREMAGE_TEST_FIXTURES", "/opt/firemage/fixtures"))
-        self.temporary = tempfile.TemporaryDirectory(prefix="fm-vm-", dir="/var/lib")
+        self.temporary = tempfile.TemporaryDirectory(prefix="fm-vm-", dir="/tmp")
         self.directory = Path(self.temporary.name)
         self.data = self.directory / "data"
-        self.uid_base, self.uid_count = unused_identity_range()
-        self.cgroup_parent = f"firemage-ci-{os.getpid()}"
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("FIREMAGE_")}
         self.env["XDG_CONFIG_HOME"] = str(self.directory / "config")
         self.server = None
@@ -93,9 +90,6 @@ class Harness:
         self.server = subprocess.Popen([
             self.binary, "serve", "--listen", f"127.0.0.1:{self.port}", "--data-dir", self.data,
             "--tls-cert", self.directory / "cert.pem", "--tls-key", self.directory / "key.pem",
-            "--jailer-uid-base", str(self.uid_base), "--jailer-uid-count", str(self.uid_count),
-            "--jailer-cgroup-parent", self.cgroup_parent,
-            "--local-asset-roots", f"{self.fixtures.resolve()},{self.directory}",
         ], env=self.env, stdout=self.log, stderr=self.log)
 
         def ready():
@@ -177,7 +171,6 @@ class Harness:
                 with contextlib.suppress(Exception):
                     self.request("DELETE", f"/v1/networks/{network}")
         self.stop_server()
-        cleanup_cgroup(self.cgroup_parent)
         # A crashed daemon may leave managed Firecracker children behind.
         for process in Path("/proc").glob("[0-9]*/cmdline"):
             with contextlib.suppress(OSError, ValueError):

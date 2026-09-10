@@ -116,7 +116,7 @@ pub fn VmDetail(vm: Value, onchanged: EventHandler<()>, onclose: EventHandler<()
                 }
             }
             div { class: "tabs scroll",
-                for label in ["Overview", "Security", "Egress", "Environment", "Boot", "Logs", "Files", "Metadata", "Advanced"] {
+                for label in ["Overview", "Egress", "Environment", "Boot", "Logs", "Files", "Metadata", "Advanced"] {
                     button {
                         class: if tab() == label { "active" } else { "" },
                         onclick: move | _
@@ -170,7 +170,6 @@ pub fn VmDetail(vm: Value, onchanged: EventHandler<()>, onclose: EventHandler<()
                         p { class: "small muted", "Stop the VM before changing its configuration or deleting it." }
                     }
                 },
-                "Security" => rsx! { firemage_webui_view_security::Security { vm: vm.clone(), onchanged } },
                 "Boot" => rsx! { firemage_webui_view_boot::Boot { vm: vm.clone(), onchanged } },
                 "Environment" => rsx! { firemage_webui_view_environment::Environment { vm: vm.clone(), onchanged } },
                 "Egress" => rsx! {

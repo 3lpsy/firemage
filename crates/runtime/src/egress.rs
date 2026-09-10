@@ -44,29 +44,6 @@ impl Runtime {
         input: &firemage_wire::RawRequest,
     ) -> anyhow::Result<()> {
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
-        let is_unrestricted = self.config.allow_unrestricted_raw_api == Some(true)
-            && match spec.security.mode {
-                firemage_wire::IsolationMode::Jailed => false,
-                firemage_wire::IsolationMode::Trusted => {
-                    self.config.allow_trusted_vms == Some(true)
-                }
-                firemage_wire::IsolationMode::External => {
-                    self.config.allow_external_vms == Some(true)
-                }
-            };
-        if input.method != "GET" && !is_unrestricted {
-            anyhow::ensure!(
-                matches!(
-                    (input.method.as_str(), input.path.as_str()),
-                    ("PUT", "/mmds" | "/actions" | "/balloon")
-                        | (
-                            "PATCH",
-                            "/mmds" | "/vm" | "/balloon" | "/balloon/statistics"
-                        )
-                ),
-                "raw host resource mutations require trusted/external mode and host allow_unrestricted_raw_api; jailed VMs always require managed configuration"
-            );
-        }
         if input.method != "GET" && self.is_restricted_network(&row.owner_id, &spec).await? {
             anyhow::ensure!(
                 !["/network-interfaces", "/vsock", "/snapshot/load"]

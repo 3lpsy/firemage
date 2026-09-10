@@ -14,4 +14,3 @@ firemage-webui-view-vm-editor = { path = "../view-vm-editor" }
 firemage-webui-view-egress = { path = "../view-egress" }
 firemage-webui-view-environment = { path = "../view-environment" }
 firemage-webui-view-boot = { path = "../view-boot" }
-firemage-webui-view-security = { path = "../view-security" }

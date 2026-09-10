@@ -57,47 +57,19 @@ pub(crate) async fn stop(pid: i32, expected: String) -> anyhow::Result<()> {
     .await?
 }
 
-pub(crate) async fn socket_identity(socket: &str) -> anyhow::Result<(i32, String)> {
+pub(crate) async fn from_socket(socket: &str) -> anyhow::Result<(i32, String)> {
     let stream = tokio::net::UnixStream::connect(socket).await?;
     let pid = stream
         .peer_cred()?
         .pid()
         .context("socket has no peer process id")?;
-    Ok((pid, identity(pid)?))
-}
-pub(crate) async fn from_socket(socket: &str) -> anyhow::Result<(i32, String)> {
-    let (pid, start) = socket_identity(socket).await?;
     let command = std::fs::read(format!("/proc/{pid}/cmdline"))?;
     let arguments: Vec<_> = command.split(|b| *b == 0).collect();
     anyhow::ensure!(
-        arguments.windows(2).any(|pair| {
-            if pair[0] != b"--api-sock" {
-                return false;
-            }
-            let Ok(argument) = std::str::from_utf8(pair[1]) else {
-                return false;
-            };
-            let directory = if std::path::Path::new(argument).is_absolute() {
-                "root"
-            } else {
-                "cwd"
-            };
-            let path = std::path::Path::new(&format!("/proc/{pid}/{directory}"))
-                .join(argument.trim_start_matches('/'));
-            is_same_file(&path, std::path::Path::new(socket)).unwrap_or(false)
-        }),
+        arguments
+            .windows(2)
+            .any(|pair| pair[0] == b"--api-sock" && pair[1] == socket.as_bytes()),
         "socket peer is not the assigned Firecracker process"
     );
-    Ok((pid, start))
-}
-
-// Procfs magic links can display namespace-relative names; compare their actual filesystem objects.
-pub(crate) fn is_same_file(
-    left: &std::path::Path,
-    right: &std::path::Path,
-) -> anyhow::Result<bool> {
-    use std::os::unix::fs::MetadataExt;
-    let left = std::fs::metadata(left)?;
-    let right = std::fs::metadata(right)?;
-    Ok(left.dev() == right.dev() && left.ino() == right.ino())
+    Ok((pid, identity(pid)?))
 }

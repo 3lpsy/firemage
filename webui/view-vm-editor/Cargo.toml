@@ -11,4 +11,3 @@ firemage-webui-provider-api = { path = "../provider-api" }
 firemage-webui-provider-auth = { path = "../provider-auth" }
 firemage-webui-component-controls = { path = "../component-controls" }
 toml = { workspace = true }
-firemage-webui-view-security = { path = "../view-security" }

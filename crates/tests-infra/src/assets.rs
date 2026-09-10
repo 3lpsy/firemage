@@ -15,7 +15,6 @@ const SCRIPTS: &[(&str, &str)] = &[
         include_str!("../scripts/vm/egress_recovery.py"),
     ),
     ("vm/fixture.py", include_str!("../scripts/vm/fixture.py")),
-    ("vm/security.py", include_str!("../scripts/vm/security.py")),
     ("vm/init.sh", include_str!("../scripts/vm/init.sh")),
 ];
 

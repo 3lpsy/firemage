@@ -5,24 +5,6 @@ use std::path::PathBuf;
 #[derive(Debug, Default, Clone, Args, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Server {
-    #[arg(long, env = "FIREMAGE_LOCAL_ASSET_ROOTS", value_delimiter = ',')]
-    pub local_asset_roots: Option<Vec<PathBuf>>,
-    #[arg(long, env = "FIREMAGE_EXTERNAL_SOCKET_ROOTS", value_delimiter = ',')]
-    pub external_socket_roots: Option<Vec<PathBuf>>,
-    #[arg(long, env = "FIREMAGE_JAILER")]
-    pub jailer: Option<PathBuf>,
-    #[arg(long, env = "FIREMAGE_JAILER_UID_BASE")]
-    pub jailer_uid_base: Option<u32>,
-    #[arg(long, env = "FIREMAGE_JAILER_UID_COUNT")]
-    pub jailer_uid_count: Option<u32>,
-    #[arg(long, env = "FIREMAGE_JAILER_CGROUP_PARENT")]
-    pub jailer_cgroup_parent: Option<String>,
-    #[arg(long, env = "FIREMAGE_ALLOW_TRUSTED_VMS", num_args = 0..=1, default_missing_value = "true")]
-    pub allow_trusted_vms: Option<bool>,
-    #[arg(long, env = "FIREMAGE_ALLOW_EXTERNAL_VMS", num_args = 0..=1, default_missing_value = "true")]
-    pub allow_external_vms: Option<bool>,
-    #[arg(long, env = "FIREMAGE_ALLOW_UNRESTRICTED_RAW_API", num_args = 0..=1, default_missing_value = "true")]
-    pub allow_unrestricted_raw_api: Option<bool>,
     #[arg(long, env = "FIREMAGE_EGRESS_UPSTREAM", value_parser = parse_upstream)]
     pub egress_upstream: Option<firemage_egress_policy::UpstreamProxy>,
     #[arg(long, env = "FIREMAGE_PUBLIC_URL")]
@@ -41,15 +23,8 @@ pub struct Server {
     pub tls_key: Option<PathBuf>,
     #[arg(long, env = "FIREMAGE_LISTEN")]
     pub listen: Option<String>,
-    /// Serve HTTP on this Unix socket instead of TCP. Its parent must already exist.
     #[arg(long, env = "FIREMAGE_UNIX_SOCKET")]
     pub unix_socket: Option<PathBuf>,
-    /// Octal socket permissions: 0600 (default) or 0660 with an explicit group.
-    #[arg(long, env = "FIREMAGE_UNIX_SOCKET_MODE")]
-    pub unix_socket_mode: Option<String>,
-    /// Numeric group that may connect when socket mode is 0660.
-    #[arg(long, env = "FIREMAGE_UNIX_SOCKET_GID")]
-    pub unix_socket_gid: Option<u32>,
     #[arg(long, env = "FIREMAGE_DATABASE")]
     pub database: Option<String>,
     #[arg(long, env = "FIREMAGE_DATA_DIR")]
@@ -66,17 +41,6 @@ pub struct Server {
 impl Server {
     pub fn merge(self, file: Self) -> Self {
         Self {
-            local_asset_roots: self.local_asset_roots.or(file.local_asset_roots),
-            external_socket_roots: self.external_socket_roots.or(file.external_socket_roots),
-            jailer: self.jailer.or(file.jailer),
-            jailer_uid_base: self.jailer_uid_base.or(file.jailer_uid_base),
-            jailer_uid_count: self.jailer_uid_count.or(file.jailer_uid_count),
-            jailer_cgroup_parent: self.jailer_cgroup_parent.or(file.jailer_cgroup_parent),
-            allow_trusted_vms: self.allow_trusted_vms.or(file.allow_trusted_vms),
-            allow_external_vms: self.allow_external_vms.or(file.allow_external_vms),
-            allow_unrestricted_raw_api: self
-                .allow_unrestricted_raw_api
-                .or(file.allow_unrestricted_raw_api),
             egress_upstream: self.egress_upstream.or(file.egress_upstream),
             public_url: self.public_url.or(file.public_url),
             oidc_client_secret: self.oidc_client_secret.or(file.oidc_client_secret),
@@ -87,8 +51,6 @@ impl Server {
             tls_key: self.tls_key.or(file.tls_key),
             listen: self.listen.or(file.listen),
             unix_socket: self.unix_socket.or(file.unix_socket),
-            unix_socket_mode: self.unix_socket_mode.or(file.unix_socket_mode),
-            unix_socket_gid: self.unix_socket_gid.or(file.unix_socket_gid),
             database: self.database.or(file.database),
             data_dir: self.data_dir.or(file.data_dir),
             firecracker: self.firecracker.or(file.firecracker),

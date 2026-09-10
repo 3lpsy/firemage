@@ -169,19 +169,6 @@ pub fn Config() -> Element {
                 }
             }
             aside { class: "config-notes",
-                h3 { "Deployment settings"
-                    Info { title: "Host-only configuration",
-                        "Host paths, executables, isolation policy, and authentication provider settings must be changed by the server operator in host TOML, environment variables, or CLI options. The API rejects edits to these fields. Runtime settings such as session lifetime remain editable here."
-                    }
-                }
-                details {
-                    summary { "Fields managed on the host" }
-                    for value in current()["host_only"].as_array().into_iter().flatten() {
-                        div { class: "list-line mono small", "{value.as_str().unwrap_or_default()}" }
-                    }
-                }
-                p { class: "small muted", "Deployment settings require access to the server host." }
-                hr {}
                 h3 { "Active overrides" }
                 if current()["overrides"].as_array().is_none_or(Vec::is_empty) {
                     p { class: "muted small", "No command-line or environment overrides reported." }

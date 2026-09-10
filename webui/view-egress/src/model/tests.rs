@@ -35,28 +35,3 @@ fn clearing_routes_removes_egress_without_changing_other_fields() {
         json!({"name":"runner"})
     );
 }
-
-#[test]
-fn missing_credentials_identify_the_field_without_sending_an_invalid_policy() {
-    let original = json!({"network":{}});
-    let mut draft = Draft::new(&json!({"http":{"rules":[]}}));
-    draft.rules.push(openai_rule());
-    assert_eq!(
-        draft.spec(&original).unwrap_err(),
-        "Choose a secret for injected header Authorization."
-    );
-    draft.rules[0]["_headers"][0]["value"]["secret"] = json!("service-token");
-    draft.rules[0]["signing"] = json!({"kind":"hmac_sha256", "key":{"secret":""}});
-    assert_eq!(
-        draft.spec(&original).unwrap_err(),
-        "Choose a secret for HMAC key."
-    );
-    draft.rules[0]["signing"]["key"]["secret"] = json!("signing-key");
-    draft.upstream = json!({"url":"http://proxy.example.com", "password":{"secret":""}});
-    assert_eq!(
-        draft.spec(&original).unwrap_err(),
-        "Choose a secret for upstream proxy password."
-    );
-    draft.upstream["password"]["secret"] = json!("proxy-password");
-    assert!(draft.spec(&original).is_ok());
-}

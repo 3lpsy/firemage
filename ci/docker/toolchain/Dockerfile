@@ -14,8 +14,8 @@ ARG NEXTEST_VERSION=0.9.140
 ARG WASM_BINDGEN_VERSION=0.2.125
 ENV CARGO_HOME=/opt/firemage/cargo RUSTC_WRAPPER=""
 ENV PATH=/usr/local/bin:${PATH}
-COPY ci/build/cargo.sh /opt/firemage/cargo-proxy.sh
-COPY ci/build/configure-cargo.py /opt/firemage/configure-cargo.py
+COPY ci/internal/build/cargo.sh /opt/firemage/cargo-proxy.sh
+COPY ci/internal/build/configure-cargo.py /opt/firemage/configure-cargo.py
 
 # Persist source replacement so cargo-chef's Cargo subprocesses use the proxy too.
 RUN python3 /opt/firemage/configure-cargo.py \
@@ -32,7 +32,7 @@ RUN python3 /opt/firemage/configure-cargo.py \
     && chmod -R a+rwX "$CARGO_HOME"
 
 # Check non-root access within the builder; nested OCI execution is not required.
-COPY ci/build/toolchain-check.sh /opt/firemage/toolchain-check.sh
+COPY ci/internal/build/toolchain-check.sh /opt/firemage/toolchain-check.sh
 RUN setpriv --reuid=65534 --regid=65534 --clear-groups \
     bash /opt/firemage/toolchain-check.sh
 

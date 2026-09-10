@@ -1843,7 +1843,7 @@ checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 
 [[package]]
 name = "firemage"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -1866,13 +1866,12 @@ dependencies = [
 
 [[package]]
 name = "firemage-assets"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "base64",
  "firemage-wire",
  "hex",
- "libc",
  "reqwest 0.12.28",
  "serde_json",
  "sha2 0.10.9",
@@ -1882,7 +1881,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-auth"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1895,7 +1894,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-client"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "reqwest 0.12.28",
@@ -1905,7 +1904,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-config"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1920,7 +1919,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-egress-policy"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "firemage-request-signing",
@@ -1931,7 +1930,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-egress-proxy"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1959,7 +1958,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-firecracker"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1971,14 +1970,14 @@ dependencies = [
 
 [[package]]
 name = "firemage-migrations"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "sea-orm-migration",
 ]
 
 [[package]]
 name = "firemage-network"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "firemage-wire",
@@ -1988,14 +1987,14 @@ dependencies = [
 
 [[package]]
 name = "firemage-orm"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "sea-orm",
 ]
 
 [[package]]
 name = "firemage-queries"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "firemage-migrations",
@@ -2007,7 +2006,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-request-signing"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2025,7 +2024,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-runtime"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "firemage-assets",
@@ -2047,7 +2046,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-secrets"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2065,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-server"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2079,7 +2078,6 @@ dependencies = [
  "firemage-runtime",
  "firemage-wire",
  "jsonwebtoken",
- "libc",
  "reqwest 0.12.28",
  "rustls",
  "serde",
@@ -2093,7 +2091,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-tests-infra"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2103,7 +2101,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-app"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2125,7 +2123,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-component-controls"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "serde_json",
@@ -2135,7 +2133,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-component-value-source"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2146,7 +2144,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-e2e"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2170,7 +2168,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-activity"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2180,7 +2178,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-config"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2191,7 +2189,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-host"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2201,7 +2199,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-login"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2211,7 +2209,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-networks"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2222,7 +2220,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-secrets"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2233,7 +2231,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-tokens"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2245,7 +2243,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-users"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2256,7 +2254,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-page-vms"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2270,7 +2268,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-provider-api"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "gloo-net",
@@ -2282,7 +2280,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-provider-auth"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-provider-api",
@@ -2292,7 +2290,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-routes"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "serde_json",
@@ -2302,7 +2300,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-view-boot"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "base64",
  "dioxus",
@@ -2315,7 +2313,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-view-egress"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2327,7 +2325,7 @@ dependencies = [
 
 [[package]]
 name = "firemage-webui-view-environment"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2338,20 +2336,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "firemage-webui-view-security"
-version = "0.4.0"
-dependencies = [
- "dioxus",
- "firemage-webui-component-controls",
- "firemage-webui-provider-api",
- "firemage-webui-provider-auth",
- "firemage-wire",
- "serde_json",
-]
-
-[[package]]
 name = "firemage-webui-view-vm-detail"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
@@ -2360,27 +2346,25 @@ dependencies = [
  "firemage-webui-view-boot",
  "firemage-webui-view-egress",
  "firemage-webui-view-environment",
- "firemage-webui-view-security",
  "firemage-webui-view-vm-editor",
  "serde_json",
 ]
 
 [[package]]
 name = "firemage-webui-view-vm-editor"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "firemage-webui-component-controls",
  "firemage-webui-provider-api",
  "firemage-webui-provider-auth",
- "firemage-webui-view-security",
  "serde_json",
  "toml",
 ]
 
 [[package]]
 name = "firemage-wire"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "firemage-egress-policy",

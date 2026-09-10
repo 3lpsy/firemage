@@ -6,5 +6,3 @@ pub use storage::*;
 mod managed;
 mod validation;
 pub use managed::*;
-
-mod socket;

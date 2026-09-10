@@ -21,10 +21,7 @@ fn edits_preserve_secrets_overrides_and_require_restart_for_static_fields() {
     let edit = before
         .toml
         .replace("session_ttl = 600", "session_ttl = 900")
-        .replace(
-            "[server]",
-            "[server]\npublic_url = 'https://app.example.test'",
-        );
+        .replace("[server]", "[server]\nwebui_dir = '/srv/webui'");
     let preview = managed
         .edit(
             ConfigEdit {
@@ -45,15 +42,12 @@ fn edits_preserve_secrets_overrides_and_require_restart_for_static_fields() {
             true,
         )
         .unwrap();
-    assert!(after.restart_required.contains(&"public_url".into()));
+    assert!(after.restart_required.contains(&"webui_dir".into()));
     assert!(!after.restart_required.contains(&"session_ttl".into()));
     assert_eq!(managed.snapshot().session_ttl().unwrap(), 900);
-    assert_eq!(managed.snapshot().public_url, None);
-    assert!(after.effective["public_url"].is_null());
-    assert_eq!(
-        after.effective_after_restart["public_url"],
-        "https://app.example.test"
-    );
+    assert_eq!(managed.snapshot().webui_dir, None);
+    assert!(after.effective["webui_dir"].is_null());
+    assert_eq!(after.effective_after_restart["webui_dir"], "/srv/webui");
     assert_eq!(after.effective["session_ttl"], 900);
     assert_eq!(after.effective["listen"], "127.0.0.1:9000");
     let stored = std::fs::read_to_string(&path).unwrap();
@@ -193,95 +187,4 @@ fn validation_does_not_create_config_directories_or_lock_files() {
         .unwrap();
     assert!(!parent.exists());
     assert_eq!(managed.snapshot().session_ttl().unwrap(), 86400);
-}
-
-#[test]
-fn host_policy_edits_are_rejected_even_when_overridden() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("config.toml");
-    let source = "[server]\nfirecracker='/usr/bin/firecracker'\nallow_trusted_vms=false\n";
-    std::fs::write(&path, source).unwrap();
-    let overrides = Server {
-        firecracker: Some("/opt/firecracker".into()),
-        ..Default::default()
-    };
-    let managed = ManagedConfig::new(
-        Some(path.clone()),
-        overrides.clone(),
-        overrides.merge(firemage_config::read(&path, true).unwrap().server),
-    );
-    let view = managed.view().unwrap();
-    for field in [
-        "firecracker",
-        "jailer",
-        "allow_trusted_vms",
-        "oidc_client_secret",
-        "unix_socket",
-    ] {
-        assert!(view.host_only.contains(&field.to_owned()));
-    }
-    assert!(!view.host_only.contains(&"session_ttl".to_owned()));
-    for change in [
-        source.replace("/usr/bin/firecracker", "/bin/sh"),
-        source.replace("allow_trusted_vms=false", "allow_trusted_vms=true"),
-        source.replace("[server]", "[server]\nfirecracker_args=['--no-seccomp']"),
-        source.replace("[server]", "[server]\nwebui_dir='/etc'"),
-        source.replace("[server]", "[server]\nunix_socket='/run/other.sock'"),
-    ] {
-        for save in [false, true] {
-            let error = managed
-                .edit(
-                    ConfigEdit {
-                        toml: change.clone(),
-                        revision: view.revision.clone(),
-                    },
-                    save,
-                )
-                .unwrap_err();
-            assert!(error.to_string().contains("host-managed"), "{error}");
-            assert_eq!(std::fs::read_to_string(&path).unwrap(), source);
-        }
-    }
-}
-
-#[test]
-fn authentication_credentials_and_client_paths_cannot_be_redirected() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("config.toml");
-    let source = "[server]\noidc_issuer='https://login.example.test'\noidc_client_id='client'\noidc_client_secret='private-value'\n[client]\nauth_token_path='/var/lib/firemage/token'\n";
-    std::fs::write(&path, source).unwrap();
-    let managed = ManagedConfig::new(
-        Some(path.clone()),
-        Server::default(),
-        firemage_config::read(&path, true).unwrap().server,
-    );
-    let view = managed.view().unwrap();
-    for change in [
-        view.toml
-            .replace("login.example.test", "attacker.example.test"),
-        view.toml.replace("<redacted>", "replacement"),
-        view.toml.replace("/var/lib/firemage/token", "/etc/other"),
-    ] {
-        let error = managed
-            .edit(
-                ConfigEdit {
-                    toml: change,
-                    revision: view.revision.clone(),
-                },
-                true,
-            )
-            .unwrap_err();
-        assert!(error.to_string().contains("host-managed"), "{error}");
-        assert!(!error.to_string().contains("private-value"));
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), source);
-    }
-    managed
-        .edit(
-            ConfigEdit {
-                toml: view.toml,
-                revision: view.revision,
-            },
-            true,
-        )
-        .unwrap();
 }

@@ -45,15 +45,6 @@ pub async fn create_with_ports(
     attachment: &NetworkAttachment,
     ports: &[u16],
 ) -> anyhow::Result<String> {
-    create_with_owner(id, spec, attachment, ports, None).await
-}
-pub async fn create_with_owner(
-    id: &str,
-    spec: &NetworkSpec,
-    attachment: &NetworkAttachment,
-    ports: &[u16],
-    uid: Option<u32>,
-) -> anyhow::Result<String> {
     let (tap, table) = identifiers(id)?;
     let rules = crate::rules_with_ports(&tap, &table, spec, attachment, ports)?;
     if let firemage_wire::NetworkPolicy::HostOnly { address } = spec.policy
@@ -79,12 +70,7 @@ pub async fn create_with_owner(
             "host-only target must be an address assigned to this host"
         );
     }
-    let owner = uid.map(|v| v.to_string());
-    let mut args = vec!["tuntap", "add", "dev", &tap, "mode", "tap"];
-    if let Some(owner) = &owner {
-        args.extend(["user", owner]);
-    }
-    ip(&args).await?;
+    ip(&["tuntap", "add", "dev", &tap, "mode", "tap"]).await?;
     let result = async {
         let mut nft = Command::new("nft")
             .args(["-f", "-"])

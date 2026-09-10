@@ -2,41 +2,6 @@ use crate::Server;
 impl Server {
     pub fn validate(&self) -> anyhow::Result<()> {
         self.session_ttl()?;
-        for roots in [&self.local_asset_roots, &self.external_socket_roots]
-            .into_iter()
-            .flatten()
-        {
-            anyhow::ensure!(
-                roots.len() <= 64 && roots.iter().all(|path| path.is_absolute()),
-                "asset/socket roots must be at most 64 absolute directory paths"
-            );
-        }
-        self.validate_unix_socket()?;
-        anyhow::ensure!(
-            self.jailer_uid_base.is_some() == self.jailer_uid_count.is_some(),
-            "jailer_uid_base and jailer_uid_count must be set together"
-        );
-        if let (Some(base), Some(count)) = (self.jailer_uid_base, self.jailer_uid_count) {
-            anyhow::ensure!(
-                base >= 65536
-                    && count > 0
-                    && count <= 1048576
-                    && base.checked_add(count).is_some_and(|end| end < u32::MAX),
-                "invalid reserved jailer UID/GID range"
-            );
-        }
-        if let Some(parent) = &self.jailer_cgroup_parent {
-            anyhow::ensure!(
-                !parent.is_empty()
-                    && parent.split('/').all(|part| !part.is_empty()
-                        && part != "."
-                        && part != ".."
-                        && part
-                            .bytes()
-                            .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))),
-                "invalid relative jailer cgroup parent"
-            );
-        }
         if let Some(upstream) = &self.egress_upstream {
             upstream.validate()?;
         }
@@ -119,7 +84,6 @@ impl Server {
             &self.webui_dir,
             &self.oidc_ca_cert,
             &self.firecracker,
-            &self.jailer,
             &self.unix_socket,
             &self.tls_cert,
             &self.tls_key,

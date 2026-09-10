@@ -2,7 +2,7 @@ use crate::Runtime;
 use firemage_wire::{Vm, VmSpec};
 impl Runtime {
     pub async fn update(&self, owner: &str, id: &str, spec: VmSpec) -> anyhow::Result<Vm> {
-        self.ensure_isolation_policy(&spec)?;
+        spec.validate()?;
         let _guard = self.lock(id).await;
         let _network_guard = self.lock("networks").await;
         self.validate_dependencies(owner, &spec).await?;
@@ -16,8 +16,8 @@ impl Runtime {
         );
         let previous: VmSpec = serde_json::from_str(&row.spec)?;
         anyhow::ensure!(
-            previous.socket == spec.socket && previous.security.mode == spec.security.mode,
-            "attached socket or isolation mode cannot be changed; define a new VM"
+            previous.socket == spec.socket,
+            "attached socket cannot be changed; define a new VM"
         );
         if let Some(network) = &spec.network {
             firemage_queries::network(&self.db, owner, &network.network).await?;

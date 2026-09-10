@@ -51,16 +51,9 @@ pub async fn resources(h: &Harness) -> Result<()> {
 
     h.navigate("Virtual machines").await?;
     h.button("+ Create VM").await?;
-    anyhow::ensure!(
-        h.element(By::Css("input[name='vm-isolation'][value='jailed']"))
-            .await?
-            .is_selected()
-            .await?,
-        "new VMs must default to jailed host isolation"
-    );
     h.fill("vm-name", "offline-harness").await?;
-    h.fill("vm-kernel", &h.asset("vmlinux")).await?;
-    h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
+    h.fill("vm-kernel", "/fixture/vmlinux").await?;
+    h.fill("vm-rootfs", "/fixture/rootfs.ext4").await?;
     h.fill("vm-cpus", "2").await?;
     h.fill("vm-memory", "512").await?;
     h.fill("vm-userdata", "hello from the browser").await?;
@@ -68,17 +61,11 @@ pub async fn resources(h: &Harness) -> Result<()> {
         h.value("vm-network").await?.is_empty(),
         "new VMs must default to no networking"
     );
-    h.radio("vm-isolation", "Trusted host process").await?;
-    h.modal_button("Create VM").await?;
-    h.text("trusted VMs are disabled by host policy").await?;
-    h.radio("vm-isolation", "Jailed").await?;
     h.screenshot("vm-create").await?;
     h.modal_button("Create VM").await?;
     h.absent(By::Css("[role='dialog']")).await?;
     h.button("offline-harness").await?;
     h.text("No network").await?;
-    super::security::limits(h).await?;
-    h.button("Overview").await?;
     h.button("Configure VM").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;
     let fields = spec.as_table_mut().context("VM TOML must be a table")?;
@@ -97,7 +84,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     );
     h.button("Start").await?;
     h.element(By::Css(".vm-detail .status-failed")).await?;
-    h.element(By::Css(".vm-detail [role='alert']")).await?;
+    h.text("No such file or directory").await?;
     h.screenshot("start-error").await?;
     h.button("Delete VM").await?;
     h.modal_button("Delete VM").await?;
