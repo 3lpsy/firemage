@@ -1,0 +1,19 @@
+[package]
+name = "firemage-assets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+libc = "0.2"
+tokio.workspace = true
+reqwest.workspace = true
+sha2.workspace = true
+hex.workspace = true
+serde_json.workspace = true
+firemage-wire = { path = "../wire" }
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile.workspace = true

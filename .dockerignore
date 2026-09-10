@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+target
+dist
+data
+docs/internal
+AGENTS.md
+CLAUDE.md

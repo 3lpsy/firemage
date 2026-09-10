@@ -1,0 +1,12 @@
+[package]
+name = "firemage-webui-provider-auth"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+serde_json = { workspace = true }
+firemage-webui-provider-api = { path = "../provider-api" }
+
+gloo-timers = { version = "0.3", features = ["futures"] }

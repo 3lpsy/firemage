@@ -1,0 +1,25 @@
+[package]
+name = "firemage-request-signing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["runtime"]
+runtime = ["dep:aws-sigv4", "dep:aws-credential-types", "dep:async-trait", "dep:hmac", "dep:sha2", "dep:hex", "dep:url"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+http = "1"
+aws-sigv4 = { version = "1", optional = true, default-features = false, features = ["sign-http", "http1"] }
+aws-credential-types = { version = "1", optional = true }
+async-trait = { version = "0.1", optional = true }
+hmac = { version = "0.12", optional = true }
+sha2 = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio.workspace = true
+serde_json.workspace = true

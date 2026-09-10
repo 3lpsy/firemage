@@ -1,0 +1,15 @@
+[package]
+name = "firemage-queries"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+sea-orm.workspace = true
+firemage-orm = { path = "../orm" }
+firemage-migrations = { path = "../migrations" }
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

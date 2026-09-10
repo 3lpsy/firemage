@@ -1,0 +1,28 @@
+[package]
+name = "firemage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+tests-infra = ["dep:firemage-tests-infra"]
+
+[dependencies]
+firemage-tests-infra = { path = "../tests-infra", optional = true }
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+toml.workspace = true
+tokio.workspace = true
+rpassword.workspace = true
+tracing-subscriber.workspace = true
+reqwest.workspace = true
+firemage-wire = { path = "../wire" }
+firemage-config = { path = "../config" }
+firemage-queries = { path = "../queries" }
+firemage-auth = { path = "../auth" }
+firemage-server = { path = "../server" }
+firemage-client = { path = "../client" }
+base64 = "0.22"

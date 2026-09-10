@@ -1,0 +1,11 @@
+[package]
+name = "firemage-webui-component-controls"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen.workspace = true
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement", "NodeList"] }

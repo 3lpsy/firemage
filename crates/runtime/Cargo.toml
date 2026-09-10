@@ -1,0 +1,26 @@
+[package]
+name = "firemage-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+firemage-wire = { path = "../wire" }
+firemage-queries = { path = "../queries" }
+firemage-orm = { path = "../orm" }
+firemage-firecracker = { path = "../firecracker" }
+firemage-assets = { path = "../assets" }
+firemage-network = { path = "../network" }
+firemage-config = { path = "../config" }
+libc = "0.2"
+
+firemage-egress-proxy = { path = "../egress-proxy" }
+firemage-secrets = { path = "../secrets" }
+
+[dev-dependencies]
+tempfile.workspace = true

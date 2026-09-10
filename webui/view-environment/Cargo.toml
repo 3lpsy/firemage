@@ -1,0 +1,13 @@
+[package]
+name = "firemage-webui-view-environment"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde_json.workspace = true
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-component-value-source = { path = "../component-value-source" }

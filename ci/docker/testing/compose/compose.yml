@@ -1,0 +1,14 @@
+services:
+  probe:
+    image: ${FIREMAGE_CI_CONTAINER_IMAGE:?missing image}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        cp /work/input /work/output
+        printf 'HTTP/1.1 200 OK\r\nContent-Length: 14\r\nConnection: close\r\n\r\ncompose-ready\n' > /tmp/response
+        while true; do nc -l -p 8080 -w 2 < /tmp/response; done
+    ports:
+      - "127.0.0.1:${FIREMAGE_CI_COMPOSE_PORT:?missing port}:8080"
+    volumes:
+      - "${FIREMAGE_CI_COMPOSE_DIR:?missing work directory}:/work:z"

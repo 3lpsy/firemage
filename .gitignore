@@ -1,0 +1,13 @@
+/target/
+/data/
+/.env
+/docs/internal/
+*.db
+*.db-shm
+*.db-wal
+/dist/
+/data/dev/run/
+/data/tests/run/
+/data/tmp
+
+__pycache__/

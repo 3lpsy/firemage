@@ -1,0 +1,24 @@
+[package]
+name = "firemage-webui-app"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+serde_json = { workspace = true }
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-routes = { path = "../routes" }
+firemage-webui-page-login = { path = "../page-login" }
+firemage-webui-page-vms = { path = "../page-vms" }
+firemage-webui-page-networks = { path = "../page-networks" }
+firemage-webui-page-tokens = { path = "../page-tokens" }
+firemage-webui-page-users = { path = "../page-users" }
+firemage-webui-page-config = { path = "../page-config" }
+firemage-webui-page-activity = { path = "../page-activity" }
+firemage-webui-page-host = { path = "../page-host" }
+
+wasm-bindgen.workspace = true
+firemage-webui-page-secrets = { path = "../page-secrets" }

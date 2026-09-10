@@ -1,0 +1,31 @@
+[package]
+name = "firemage-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+firemage-wire = { path = "../wire" }
+firemage-config = { path = "../config" }
+firemage-queries = { path = "../queries" }
+firemage-orm = { path = "../orm" }
+firemage-auth = { path = "../auth" }
+firemage-runtime = { path = "../runtime" }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+jsonwebtoken = "9"
+firemage-firecracker = { path = "../firecracker" }
+base64 = "0.22"
+sha2.workspace = true
+tracing.workspace = true
+libc.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+tower.workspace = true

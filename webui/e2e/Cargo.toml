@@ -1,0 +1,27 @@
+[package]
+name = "firemage-webui-e2e"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+thirtyfour = "0.36"
+firemage-auth = { path = "../../crates/auth" }
+firemage-queries = { path = "../../crates/queries" }
+firemage-config = { path = "../../crates/config" }
+toml.workspace = true
+
+axum.workspace = true
+serde.workspace = true
+sha2.workspace = true
+base64 = "0.22"
+jsonwebtoken = "9"
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+futures-util = "0.3"

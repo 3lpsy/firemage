@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "webui/*"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+libc = "0.2"
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+clap = { version = "4", features = ["derive", "env"] }
+sea-orm = { version = "1.1", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
+sea-orm-migration = { version = "1.1", default-features = false, features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+sha2 = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+hex = "0.4"
+ipnet = { version = "2", features = ["serde"] }
+url = "2"
+rpassword = "7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+
+dioxus = { version = "0.7", features = ["web", "router", "document"] }
+wasm-bindgen = "=0.2.125"
+gloo-net = "0.6"
+gloo-timers = { version = "0.3", features = ["futures"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "RequestCredentials"] }
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+strip = true

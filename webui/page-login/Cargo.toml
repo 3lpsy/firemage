@@ -1,0 +1,11 @@
+[package]
+name = "firemage-webui-page-login"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+serde_json = { workspace = true }
+firemage-webui-provider-auth = { path = "../provider-auth" }
+firemage-webui-component-controls = { path = "../component-controls" }

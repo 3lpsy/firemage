@@ -1,0 +1,17 @@
+[package]
+name = "firemage-webui-view-vm-detail"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus = { workspace = true }
+serde_json = { workspace = true }
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-view-vm-editor = { path = "../view-vm-editor" }
+firemage-webui-view-egress = { path = "../view-egress" }
+firemage-webui-view-environment = { path = "../view-environment" }
+firemage-webui-view-boot = { path = "../view-boot" }
+firemage-webui-view-security = { path = "../view-security" }
