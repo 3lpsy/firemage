@@ -28,14 +28,15 @@ impl Runtime {
         }
     }
     pub async fn lock(&self, id: &str) -> tokio::sync::OwnedMutexGuard<()> {
-        self.locks
-            .lock()
-            .await
-            .entry(id.into())
-            .or_default()
-            .clone()
-            .lock_owned()
-            .await
+        let lock = {
+            self.locks
+                .lock()
+                .await
+                .entry(id.into())
+                .or_default()
+                .clone()
+        };
+        lock.lock_owned().await
     }
     pub fn directory(&self, id: &str) -> PathBuf {
         self.config.data_dir().join("vms").join(id)

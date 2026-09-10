@@ -54,7 +54,7 @@ impl Runtime {
                     self.ensure_snapshot(&row, &snapshot_path, &memory_path).await?;
                     ensure_absolute(&snapshot_path)?; ensure_absolute(&memory_path)?;
                     row = firemage_queries::set_vm_state(&self.db,row.clone(),"starting",None,None).await?;
-                    self.launch(&row).await?;
+                    self.launch_snapshot(&row).await?;
                     let spec: VmSpec = serde_json::from_str(&row.spec)?;
                     if let Some(net) = &spec.network {
                         self.network_tap(&row, net).await?;

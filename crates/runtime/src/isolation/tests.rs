@@ -138,3 +138,47 @@ fn filesystem_identity_follows_procfs_objects_without_trusting_link_text() {
     std::fs::write(&other, b"").unwrap();
     assert!(!crate::process::is_same_file(&descriptor_path, &other).unwrap());
 }
+
+#[tokio::test]
+async fn restore_requires_original_assets_without_recreating_boot_inputs() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = firemage_queries::connect("sqlite::memory:").await.unwrap();
+    let user = firemage_queries::add_user(&db, "operator".into(), None, true, None)
+        .await
+        .unwrap();
+    let runtime = Runtime::new(
+        db.clone(),
+        firemage_config::Server {
+            data_dir: Some(directory.path().into()),
+            ..Default::default()
+        },
+    );
+    let spec: VmSpec =
+        serde_json::from_value(json!({"name":"resume", "userdata":"original script"})).unwrap();
+    let vm = runtime.define(&user.id, spec.clone()).await.unwrap();
+    let row = firemage_queries::vm(&db, &user.id, &vm.id).await.unwrap();
+    let assets = runtime.directory(&vm.id);
+    tokio::fs::create_dir_all(&assets).await.unwrap();
+    for name in ["kernel", "rootfs.ext4", "seed.ext4"] {
+        tokio::fs::write(assets.join(name), b"original bytes")
+            .await
+            .unwrap();
+    }
+    runtime.ensure_prepared_assets(&row, &spec).await.unwrap();
+    assert_eq!(
+        tokio::fs::read(assets.join("seed.ext4")).await.unwrap(),
+        b"original bytes"
+    );
+    tokio::fs::remove_file(assets.join("seed.ext4"))
+        .await
+        .unwrap();
+    assert!(
+        runtime
+            .ensure_prepared_assets(&row, &spec)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("original prepared seed.ext4")
+    );
+    assert!(!assets.join("seed.ext4").exists());
+}

@@ -69,6 +69,40 @@ impl Runtime {
         firemage_assets::seed(&files, spec.userdata.as_deref(), &dir).await?;
         Ok(())
     }
+    pub(crate) async fn ensure_prepared_assets(
+        &self,
+        row: &firemage_orm::vms::Model,
+        spec: &VmSpec,
+    ) -> anyhow::Result<()> {
+        let mut required = vec!["kernel".to_owned(), "rootfs.ext4".to_owned()];
+        if spec.initrd.is_some() {
+            required.push("initrd".into());
+        }
+        if !spec.files.is_empty()
+            || spec.userdata.is_some()
+            || !spec.environment.is_empty()
+            || spec.network.is_some()
+        {
+            required.push("seed.ext4".into());
+        }
+        required.extend(
+            spec.drives
+                .iter()
+                .map(|drive| format!("drive-{}.img", drive.id)),
+        );
+        for name in required {
+            let metadata = tokio::fs::symlink_metadata(self.directory(&row.id).join(&name))
+                .await
+                .with_context(|| {
+                    format!("snapshot restore requires the original prepared {name}")
+                })?;
+            anyhow::ensure!(
+                metadata.is_file(),
+                "snapshot restore requires a regular prepared asset: {name}"
+            );
+        }
+        Ok(())
+    }
     pub(crate) async fn resource_path(
         &self,
         row: &firemage_orm::vms::Model,

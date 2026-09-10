@@ -1,4 +1,6 @@
 """Preserve guest egress policy across daemon recovery and managed snapshots."""
+import hashlib
+
 from .harness import wait_for
 
 
@@ -23,6 +25,9 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     wait_for("guest egress after daemon restart", lambda: "FIREMAGE_EGRESS_RESTART_OK" in harness.console(vm))
 
     harness.action(vm, "pause")
+    seed = harness.data / "vms" / vm / "seed.ext4"
+    with seed.open("rb") as source:
+        seed_digest = hashlib.file_digest(source, "sha256").digest()
     snapshots = harness.data / "vms" / vm / "snapshots"
     snapshots.mkdir(exist_ok=True)
     state, memory = snapshots / "egress.vmstate", snapshots / "egress.memory"
@@ -32,6 +37,8 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     harness.action(vm, "stop")
     assert not harness.request("GET", f"/v1/vms/{vm}/egress")["active"]
     assert harness.request("POST", f"/v1/vms/{vm}/actions", {"action": "restore", **action})["state"] == "paused"
+    with seed.open("rb") as source:
+        assert hashlib.file_digest(source, "sha256").digest() == seed_digest, "restore changed the guest's mounted seed disk"
     restored = harness.request("GET", f"/v1/vms/{vm}/egress")
     assert restored["active"] and restored["ca_fingerprint"] == initial["ca_fingerprint"], restored
     harness.action(vm, "resume")
@@ -42,7 +49,7 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     for phase in ("initial", "restart", "restore"):
         assert f"/allowed/{phase}" in plain.paths, plain.paths
         assert f"/allowed/{phase}" in tls.paths, tls.paths
-    print("PASS egress recovery: daemon restart, stable CA, managed snapshot stop/restore, HTTP/TLS allow and deny", flush=True)
+    print("PASS egress recovery: daemon restart, stable CA, unchanged seed disk, managed snapshot stop/restore, HTTP/TLS allow and deny", flush=True)
 
 
 def guest_script(target, gateway, plain_port, tls_port, host_port):

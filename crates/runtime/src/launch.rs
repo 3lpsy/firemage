@@ -4,6 +4,19 @@ use firemage_firecracker::Firecracker;
 use firemage_wire::{IsolationMode, VmSpec};
 impl Runtime {
     pub(crate) async fn launch(&self, row: &firemage_orm::vms::Model) -> anyhow::Result<()> {
+        self.launch_process(row, false).await
+    }
+    pub(crate) async fn launch_snapshot(
+        &self,
+        row: &firemage_orm::vms::Model,
+    ) -> anyhow::Result<()> {
+        self.launch_process(row, true).await
+    }
+    async fn launch_process(
+        &self,
+        row: &firemage_orm::vms::Model,
+        is_restore: bool,
+    ) -> anyhow::Result<()> {
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
         self.ensure_isolation_policy(&spec)?;
         if let Some(socket) = &spec.socket {
@@ -16,6 +29,9 @@ impl Runtime {
                 true,
             )?;
             return Ok(());
+        }
+        if is_restore {
+            self.ensure_prepared_assets(row, &spec).await?;
         }
         let args = self.config.firecracker_args.as_deref().unwrap_or_default();
         anyhow::ensure!(
@@ -45,7 +61,9 @@ impl Runtime {
                 "jailed VMs require root host privileges"
             );
             self.jail_uid(&row.id)?;
-            self.materialize_assets(row, &spec).await?;
+            if !is_restore {
+                self.materialize_assets(row, &spec).await?;
+            }
             self.jailed_command(row, &spec).await?
         } else {
             let mut command = tokio::process::Command::new(
