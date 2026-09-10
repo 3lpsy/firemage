@@ -9,6 +9,7 @@ pub struct Form {
     pub source: String,
     pub rootfs: String,
     pub rootfs_sha: String,
+    pub registry: crate::registry::RegistryForm,
     pub vcpus: String,
     pub memory: String,
     pub network: String,
@@ -61,7 +62,13 @@ impl Form {
                     )
                 }
                 "oci" => {
-                    json!({ "kind" : "oci", "image" : self.rootfs, "size_mib" : 2048 })
+                    ensure_oci_reference(&self.rootfs)?;
+                    let mut rootfs =
+                        json!({ "kind" : "oci", "image" : self.rootfs, "size_mib" : 2048 });
+                    if let Some(registry) = self.registry.value()? {
+                        rootfs["registry"] = registry;
+                    }
+                    rootfs
                 }
                 _ => json!({ "kind" : "local", "path" : self.rootfs }),
             };
@@ -76,6 +83,29 @@ impl Form {
         }
         Ok(spec)
     }
+}
+
+fn ensure_oci_reference(image: &str) -> Result<(), String> {
+    let valid = image.split_once("@sha256:").is_some_and(|(name, digest)| {
+        !name.is_empty()
+            && image.len() <= 2048
+            && !name.starts_with('-')
+            && !name.contains("://")
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-/:".contains(&b))
+            && digest.len() == 64
+            && digest
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    });
+    if !valid {
+        return Err(
+            "OCI image must include @sha256: followed by its 64 lowercase hex digest characters."
+                .into(),
+        );
+    }
+    Ok(())
 }
 /// TOML has no null; omitted optional fields preserve the VM wire defaults.
 pub fn to_toml(value: &Value) -> Result<String, String> {

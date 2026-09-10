@@ -1,8 +1,10 @@
 mod auth;
 mod network;
+mod registry;
 mod vm;
 pub use auth::*;
 pub use network::*;
+pub use registry::*;
 pub use vm::*;
 
 pub fn ensure_name(value: &str) -> anyhow::Result<()> {

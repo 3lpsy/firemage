@@ -5,6 +5,7 @@ mod oci;
 mod oci_init;
 mod seed;
 pub use extract::*;
+pub use firemage_oci::{RegistryCredentials, RegistryOptions};
 pub use image::*;
 pub use seed::*;
 

@@ -82,6 +82,7 @@ impl Runtime {
         owner: &str,
         spec: &VmSpec,
     ) -> anyhow::Result<()> {
+        self.validate_registry_dependencies(owner, spec).await?;
         if self.is_restricted_network(owner, spec).await? {
             anyhow::ensure!(
                 spec.socket.is_none(),

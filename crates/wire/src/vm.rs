@@ -18,6 +18,8 @@ pub enum Asset {
         image: String,
         #[serde(default = "disk_size")]
         size_mib: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        registry: Option<crate::RegistryAccess>,
     },
 }
 fn disk_size() -> u64 {
@@ -72,6 +74,15 @@ pub struct Drive {
 impl VmSpec {
     pub fn validate(&self) -> anyhow::Result<()> {
         crate::ensure_name(&self.name)?;
+        for asset in self
+            .kernel
+            .iter()
+            .chain(self.rootfs.iter())
+            .chain(self.initrd.iter())
+            .chain(self.drives.iter().map(|drive| &drive.asset))
+        {
+            asset.validate()?;
+        }
         self.security.validate(self.vcpus)?;
         anyhow::ensure!(
             self.socket.is_some() == (self.security.mode == crate::IsolationMode::External),

@@ -46,9 +46,11 @@ impl Runtime {
             !matches!(kernel, firemage_wire::Asset::Oci { .. }),
             "kernel must be a local or remote binary"
         );
-        firemage_assets::materialize(kernel, &dir.join("kernel")).await?;
+        self.materialize_asset(&row.owner_id, kernel, &dir.join("kernel"))
+            .await?;
         if !dir.join("rootfs.ext4").exists() {
-            firemage_assets::materialize(
+            self.materialize_asset(
+                &row.owner_id,
                 spec.rootfs
                     .as_ref()
                     .context("rootfs required for prepare/start")?,
@@ -57,12 +59,14 @@ impl Runtime {
             .await?;
         }
         if let Some(initrd) = &spec.initrd {
-            firemage_assets::materialize(initrd, &dir.join("initrd")).await?;
+            self.materialize_asset(&row.owner_id, initrd, &dir.join("initrd"))
+                .await?;
         }
         for drive in &spec.drives {
             let path = dir.join(format!("drive-{}.img", drive.id));
             if !path.exists() {
-                firemage_assets::materialize(&drive.asset, &path).await?;
+                self.materialize_asset(&row.owner_id, &drive.asset, &path)
+                    .await?;
             }
         }
         let files = self.seed_files(&row.owner_id, spec).await?;

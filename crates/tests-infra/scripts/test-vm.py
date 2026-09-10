@@ -6,6 +6,7 @@ from vm.cases import host_only, lifecycle, offline
 from vm.harness import Harness
 from vm.egress import isolated_egress
 from vm.security import isolated_processes
+from vm.oci import private_oci
 
 
 def interrupted(number, _frame):
@@ -17,6 +18,7 @@ def main():
     with Harness() as harness:
         isolated_processes(harness)
         offline(harness)
+        private_oci(harness)
         lifecycle(harness)
         host_only(harness)
         isolated_egress(harness)

@@ -16,3 +16,4 @@ mod snapshot;
 mod isolation;
 
 mod launch;
+mod registry;

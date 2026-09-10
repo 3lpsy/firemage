@@ -6,8 +6,28 @@ use tokio::io::AsyncWriteExt;
 
 // Each VM owns its writable copies; source images are never attached writable.
 pub async fn materialize(asset: &Asset, destination: &Path) -> anyhow::Result<PathBuf> {
+    if let Asset::Oci {
+        registry: Some(registry),
+        ..
+    } = asset
+    {
+        anyhow::ensure!(
+            registry.is_anonymous(),
+            "OCI registry access must be resolved before materialization"
+        );
+    }
+    materialize_with_registry(asset, destination, &crate::RegistryOptions::default()).await
+}
+
+/// The caller resolves registry secrets before invoking this entry point.
+pub async fn materialize_with_registry(
+    asset: &Asset,
+    destination: &Path,
+    registry: &crate::RegistryOptions,
+) -> anyhow::Result<PathBuf> {
+    asset.validate()?;
     let partial = destination.with_extension("partial");
-    let result = materialize_inner(asset, &partial).await;
+    let result = materialize_inner(asset, &partial, registry).await;
     if result.is_err() {
         let _ = tokio::fs::remove_file(&partial).await;
     }
@@ -15,7 +35,11 @@ pub async fn materialize(asset: &Asset, destination: &Path) -> anyhow::Result<Pa
     tokio::fs::rename(&partial, destination).await?;
     Ok(destination.to_path_buf())
 }
-async fn materialize_inner(asset: &Asset, destination: &Path) -> anyhow::Result<()> {
+async fn materialize_inner(
+    asset: &Asset,
+    destination: &Path,
+    registry: &crate::RegistryOptions,
+) -> anyhow::Result<()> {
     match asset {
         Asset::Local { path } => {
             anyhow::ensure!(
@@ -69,7 +93,9 @@ async fn materialize_inner(asset: &Asset, destination: &Path) -> anyhow::Result<
             }
             result?;
         }
-        Asset::Oci { image, size_mib } => crate::oci::oci(image, *size_mib, destination).await?,
+        Asset::Oci {
+            image, size_mib, ..
+        } => crate::oci::oci(image, *size_mib, destination, registry).await?,
     }
     Ok(())
 }

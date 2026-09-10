@@ -12,4 +12,5 @@ mod boot_inputs;
 mod egress;
 pub use egress::*;
 
+mod registry;
 mod security;

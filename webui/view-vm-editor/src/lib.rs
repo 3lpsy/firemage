@@ -1,5 +1,7 @@
 //! VM definition form with an equivalent full TOML editor.
 mod fields;
+mod registry;
+mod registry_fields;
 mod spec;
 use dioxus::prelude::*;
 use firemage_webui_component_controls::*;
@@ -52,6 +54,8 @@ pub fn VmEditor(
             .unwrap_or_default()
             .to_owned()
     });
+    let registry =
+        use_signal(|| registry::RegistryForm::from_value(&initial["rootfs"]["registry"]));
     let rootfs_sha = use_signal(|| text(&initial["rootfs"], "sha256"));
     let vcpus = use_signal(|| initial["vcpus"].as_u64().unwrap_or(1).to_string());
     let memory = use_signal(|| initial["memory_mib"].as_u64().unwrap_or(256).to_string());
@@ -85,6 +89,7 @@ pub fn VmEditor(
             source: source(),
             rootfs: rootfs(),
             rootfs_sha: rootfs_sha(),
+            registry: registry(),
             vcpus: vcpus(),
             memory: memory(),
             network: network(),
@@ -178,7 +183,7 @@ pub fn VmEditor(
                             rows: 20,
                         }
                         p { class: "muted small",
-                            "All VM settings are available here: assets, drives, network, userdata, boot files, metadata, host isolation, process limits, and external sockets. Isolation mode is fixed at creation."
+                            "All VM settings are available here: assets, registry access, drives, network, userdata, boot files, metadata, host isolation, process limits, and external sockets. Isolation mode is fixed at creation."
                         }
                     } else {
                         fields::Guided {
@@ -192,6 +197,7 @@ pub fn VmEditor(
                                 source,
                                 rootfs,
                                 rootfs_sha,
+                                registry,
                                 vcpus,
                                 memory,
                                 network,

@@ -110,6 +110,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
             .is_empty(),
         "deleted VM remains in database"
     );
+    super::registry::registry(h).await?;
     h.navigate("Activity").await?;
     h.text("vm.delete").await?;
     h.screenshot("activity").await?;

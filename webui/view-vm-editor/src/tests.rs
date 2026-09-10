@@ -11,6 +11,7 @@ fn form() -> Form {
         source: "local".into(),
         rootfs: "/assets/root.ext4".into(),
         rootfs_sha: String::new(),
+        registry: Default::default(),
         vcpus: "2".into(),
         memory: "512".into(),
         network: String::new(),
@@ -37,11 +38,14 @@ fn remote_assets_preserve_verification_and_oci_keeps_image_reference() {
     input.kernel = "https://example.test/kernel".into();
     input.kernel_sha = "ab".repeat(32);
     input.source = "oci".into();
-    input.rootfs = "example.test/runner@sha256:abc".into();
+    input.rootfs = format!("example.test/runner@sha256:{}", "a".repeat(64));
     let spec = input.spec().unwrap();
     assert_eq!(spec["kernel"]["sha256"], "ab".repeat(32));
     assert_eq!(spec["rootfs"]["kind"], "oci");
-    assert_eq!(spec["rootfs"]["image"], "example.test/runner@sha256:abc");
+    assert_eq!(
+        spec["rootfs"]["image"],
+        format!("example.test/runner@sha256:{}", "a".repeat(64))
+    );
 }
 #[test]
 fn full_toml_preserves_nested_assets_and_skips_absent_options() {
@@ -80,4 +84,70 @@ fn guided_modes_make_host_privileges_explicit() {
     let mut invalid = form();
     invalid.isolation = "external".into();
     assert!(invalid.spec().is_err());
+}
+
+#[test]
+fn registry_credentials_preserve_references_through_toml_editing() {
+    for auth in [
+        json!({"kind":"basic", "username":"robot-build", "password_secret":"registry-password"}),
+        json!({"kind":"bearer", "token_secret":"registry-token"}),
+    ] {
+        let registry = json!({"auth":auth, "token_realm":"https://auth.example.com/token", "ca_secret":"registry-ca"});
+        let mut input = form();
+        input.source = "oci".into();
+        input.rootfs = format!("registry.example.com/job@sha256:{}", "a".repeat(64));
+        input.registry = super::registry::RegistryForm::from_value(&registry);
+        let spec = input.spec().unwrap();
+        assert_eq!(spec["rootfs"]["registry"], registry);
+        let mut edited: Value = toml::from_str(&to_toml(&spec).unwrap()).unwrap();
+        edited["memory_mib"] = json!(1024);
+        assert_eq!(edited["rootfs"]["registry"], registry);
+    }
+}
+
+#[test]
+fn registry_modes_omit_inactive_credentials_and_allow_anonymous_custom_ca() {
+    let mut registry = super::registry::RegistryForm::default();
+    assert!(registry.value().unwrap().is_none());
+    registry.ca_secret = "registry-ca".into();
+    registry.password_secret = "stale-credential".into();
+    assert_eq!(
+        registry.value().unwrap().unwrap(),
+        json!({"ca_secret":"registry-ca"})
+    );
+    registry.mode = "bearer".into();
+    assert!(
+        registry
+            .value()
+            .unwrap_err()
+            .contains("Registry bearer token")
+    );
+    registry.token_secret = "invalid secret".into();
+    assert!(registry.value().is_err());
+    registry.token_secret = "token".into();
+    registry.token_realm = "http://auth.example.com/token".into();
+    assert!(registry.value().unwrap_err().contains("HTTPS"));
+    registry.token_realm.clear();
+    assert!(
+        registry.value().unwrap().unwrap()["auth"]
+            .get("password_secret")
+            .is_none()
+    );
+    registry.mode = "basic".into();
+    registry.username = "bad:user".into();
+    assert!(registry.value().unwrap_err().contains("username"));
+}
+
+#[test]
+fn guided_oci_requires_a_lowercase_pinned_digest() {
+    for image in [
+        "alpine:latest".to_owned(),
+        "alpine@sha256:abc".into(),
+        format!("alpine@sha256:{}", "A".repeat(64)),
+    ] {
+        let mut input = form();
+        input.source = "oci".into();
+        input.rootfs = image;
+        assert!(input.spec().unwrap_err().contains("@sha256"));
+    }
 }

@@ -2,9 +2,9 @@
 
 Materialize isolated VM disks and prepare guest boot inputs.
 
-- OCI conversion creates a root disk with a managed init; no host directory is shared into the guest.
+- OCI conversion uses `firemage-oci` to pull and unpack a digest-pinned image, then creates an ext4 disk with managed init. Registry access is native and uses resolved vault credentials.
 - Seed disks are rebuilt from private staging. Destination paths, numeric ownership and mode apply inside the guest.
 - Managed init mounts the seed, loads image then VM environment, installs files, runs userdata and starts the image command.
-- BYO init must implement the seed protocol to consume environment, files and userdata.
 - Jailed output extraction requires Bubblewrap namespaces and seccomp; only the disk, parser and required libraries are visible, all read-only. Output and parser resources are bounded.
-- Trusted output extraction and OCI import helpers run directly on the host; neither mounts a guest filesystem in the host kernel.
+- Anonymous materialization rejects unresolved registry settings; authenticated pulls require resolved options. Registry secrets never enter the guest disk.
+- OCI simple boot requires root USER and `/bin/sh`; BYO init implements the seed protocol for files, environment and userdata. Temporary extraction trees are discarded after success or failure.

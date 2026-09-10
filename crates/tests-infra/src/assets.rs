@@ -9,6 +9,7 @@ const SCRIPTS: &[(&str, &str)] = &[
     ),
     ("vm/harness.py", include_str!("../scripts/vm/harness.py")),
     ("vm/cases.py", include_str!("../scripts/vm/cases.py")),
+    ("vm/oci.py", include_str!("../scripts/vm/oci.py")),
     ("vm/egress.py", include_str!("../scripts/vm/egress.py")),
     (
         "vm/egress_recovery.py",

@@ -13,6 +13,7 @@ pub struct Fields {
     pub source: Signal<String>,
     pub rootfs: Signal<String>,
     pub rootfs_sha: Signal<String>,
+    pub registry: Signal<crate::registry::RegistryForm>,
     pub vcpus: Signal<String>,
     pub memory: Signal<String>,
     pub network: Signal<String>,
@@ -33,6 +34,7 @@ pub fn Guided(fields: Fields) -> Element {
         mut source,
         rootfs,
         rootfs_sha,
+        registry,
         vcpus,
         memory,
         mut network,
@@ -118,12 +120,15 @@ pub fn Guided(fields: Fields) -> Element {
             Field {
                 label: match source().as_str() {
                     "remote" => "Root disk HTTPS URL",
-                    "oci" => "OCI image reference",
+                    "oci" => "OCI image reference with @sha256 digest",
                     _ => "Root disk path on host",
                 },
                 id: "vm-rootfs",
                 value: rootfs,
                 required: true,
+            }
+            if source() == "oci" {
+                crate::registry_fields::RegistryFields { value: registry }
             }
             if source() == "remote" {
                 Field {
