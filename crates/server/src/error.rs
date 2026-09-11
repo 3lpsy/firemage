@@ -7,7 +7,10 @@ pub struct Error(pub StatusCode, pub String);
 impl From<anyhow::Error> for Error {
     fn from(error: anyhow::Error) -> Self {
         Self(
-            if error.is::<firemage_config::RevisionConflict>() {
+            if error.is::<firemage_config::RevisionConflict>()
+                || error.is::<firemage_queries::CatalogRevisionConflict>()
+                || error.is::<firemage_queries::CatalogInUse>()
+            {
                 StatusCode::CONFLICT
             } else if error.is::<firemage_queries::NotFound>() {
                 StatusCode::NOT_FOUND

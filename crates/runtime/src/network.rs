@@ -23,7 +23,8 @@ impl Runtime {
         let network: firemage_wire::NetworkSpec = serde_json::from_str(&definition.spec)?;
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
         let ports = self
-            .effective_egress(&spec)
+            .effective_egress(&row.owner_id, &spec)
+            .await?
             .map(|p| p.ports())
             .unwrap_or_default();
         let uid = if spec.security.mode == firemage_wire::IsolationMode::Jailed {

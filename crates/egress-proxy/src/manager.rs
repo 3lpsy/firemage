@@ -13,6 +13,9 @@ use tokio::{
     sync::{Mutex, OwnedSemaphorePermit, RwLock, Semaphore},
 };
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
+mod replacement;
+pub use replacement::Replacement;
 
 type ListenerKey = SocketAddrV4;
 #[derive(Clone)]
@@ -42,6 +45,7 @@ struct Registration {
     secrets: Arc<dyn SecretResolver>,
     cancel: CancellationToken,
     connections: Arc<Semaphore>,
+    tasks: TaskTracker,
 }
 
 impl Drop for Inner {
@@ -113,6 +117,7 @@ impl EgressManager {
                 secrets,
                 cancel: self.inner.shutdown.child_token(),
                 connections: Arc::new(Semaphore::new(128)),
+                tasks: TaskTracker::new(),
             },
         );
         for (key, listener) in pending {
@@ -132,8 +137,10 @@ impl EgressManager {
     pub async fn unregister(&self, id: &str) {
         let _mutation = self.inner.mutation.lock().await;
         let mut state = self.inner.state.write().await;
-        if let Some(entry) = state.registrations.remove(id) {
+        let previous = state.registrations.remove(id);
+        if let Some(entry) = &previous {
             entry.cancel.cancel();
+            entry.tasks.close();
         }
         let unused: Vec<_> = state
             .listeners
@@ -154,6 +161,9 @@ impl EgressManager {
             }
         }
         drop(state);
+        if let Some(entry) = previous {
+            entry.tasks.wait().await;
+        }
         for task in tasks {
             let _ = task.await;
         }
@@ -170,9 +180,8 @@ async fn listen(
     loop {
         let accepted = tokio::select! { _ = cancel.cancelled() => break, accepted = listener.accept() => accepted };
         let Ok((stream, peer)) = accepted else { break };
+        let state = state.read().await;
         let entry = state
-            .read()
-            .await
             .registrations
             .values()
             .find(|v| {
@@ -184,7 +193,10 @@ async fn listen(
         if let Some(entry) = entry
             && let Ok(permit) = entry.connections.clone().try_acquire_owned()
         {
-            tokio::spawn(connection(stream, key.port(), entry, ca.clone(), permit));
+            entry
+                .tasks
+                .clone()
+                .spawn(connection(stream, key.port(), entry, ca.clone(), permit));
         }
     }
 }
@@ -204,6 +216,7 @@ async fn connection(
                 _permit: permit,
                 ca,
                 cancel: entry.cancel,
+                tasks: entry.tasks,
                 secrets: entry.secrets,
                 upstream: entry.policy.upstream,
             }),

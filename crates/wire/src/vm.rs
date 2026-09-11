@@ -61,6 +61,10 @@ pub struct VmSpec {
     pub network: Option<NetworkAttachment>,
     #[serde(default)]
     pub egress: Option<firemage_egress_policy::EgressPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub egress_policy: Option<String>,
+    #[serde(default = "default_egress_http_port")]
+    pub egress_http_port: u16,
     #[serde(default)]
     pub environment: BTreeMap<String, crate::EnvironmentValue>,
     pub metadata: Option<Value>,
@@ -126,6 +130,21 @@ impl VmSpec {
                 "egress requires a managed VM and a Firemage-only network"
             );
         }
+        if let Some(policy) = &self.egress_policy {
+            crate::ensure_asset_id(policy)?;
+            anyhow::ensure!(
+                self.egress.is_none(),
+                "choose a catalog policy or inline egress, not both"
+            );
+            anyhow::ensure!(
+                self.network.is_some() && self.socket.is_none(),
+                "egress requires a managed VM and a Firemage-only network"
+            );
+        }
+        anyhow::ensure!(
+            self.egress_http_port >= 1024,
+            "egress HTTP port must be at least 1024"
+        );
         anyhow::ensure!((1..=32).contains(&self.vcpus), "vcpus must be 1-32");
         anyhow::ensure!(
             (64..=1_048_576).contains(&self.memory_mib),
@@ -204,6 +223,9 @@ impl VmSpec {
         }
         Ok(())
     }
+}
+fn default_egress_http_port() -> u16 {
+    3128
 }
 pub fn ensure_guest_path(path: &str) -> anyhow::Result<()> {
     anyhow::ensure!(

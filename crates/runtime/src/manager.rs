@@ -42,6 +42,7 @@ impl Runtime {
         self.config.data_dir().join("vms").join(id)
     }
     pub async fn define(&self, owner: &str, mut spec: VmSpec) -> anyhow::Result<Vm> {
+        let _catalog = self.lock("egress-catalog").await;
         let _asset_guard = self.lock("file-assets").await;
         let _kernel_guard = self.lock("kernels").await;
         self.normalize_kernel(&mut spec)?;
@@ -70,6 +71,7 @@ impl Runtime {
             socket.as_os_str().len() < 108,
             "Unix socket path exceeds Linux limit"
         );
+        self.normalize_egress(owner, &mut spec).await?;
         let row = firemage_queries::insert_vm(
             &self.db,
             owner,
@@ -162,6 +164,7 @@ impl Runtime {
         id: &str,
         snapshots: bool,
     ) -> anyhow::Result<()> {
+        let _catalog = self.lock("egress-catalog").await;
         let _guard = self.lock(id).await;
         let row = self
             .refresh(firemage_queries::vm(&self.db, owner, id).await?)
@@ -192,7 +195,9 @@ impl Runtime {
         if snapshots {
             self.delete_vm_snapshots(owner, id).await?;
         }
-        firemage_queries::delete_vm(&self.db, owner, id).await
+        firemage_queries::delete_vm(&self.db, owner, id).await?;
+        let _ = std::fs::remove_file(self.egress_pending(id));
+        Ok(())
     }
 }
 pub fn view(row: firemage_orm::vms::Model) -> anyhow::Result<Vm> {

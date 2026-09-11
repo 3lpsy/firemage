@@ -12,6 +12,7 @@ import subprocess
 import threading
 
 from .egress_recovery import recovery
+from .egress_catalog import shared_catalog
 
 
 class Origin(http.server.BaseHTTPRequestHandler):
@@ -34,8 +35,25 @@ class Origin(http.server.BaseHTTPRequestHandler):
 
 class Echo(socketserver.BaseRequestHandler):
     def handle(self):
-        while data := self.request.recv(4096):
-            self.request.sendall(data)
+        tracker = getattr(self.server, "catalog_tracker", None)
+        name, prefix, received = None, b"", 0
+        try:
+            while data := self.request.recv(4096):
+                received += len(data)
+                if tracker and name is None:
+                    prefix = (prefix + data)[:64]
+                    first, separator, _ = prefix.partition(b"\n")
+                    if separator and first in (b"held-one", b"held-two"):
+                        name = first.decode()
+                        tracker.started(name, received)
+                elif tracker and name:
+                    tracker.received(name, len(data))
+                self.request.sendall(data)
+        except (ConnectionError, OSError):
+            pass
+        finally:
+            if tracker and name:
+                tracker.closed(name)
 
 
 class Upstream(http.server.BaseHTTPRequestHandler):
@@ -137,6 +155,7 @@ def isolated_egress(harness):
         assert tls.authorized and all(tls.authorized), "TLS requests did not receive injected credentials"
         assert set(upstream.seen) == upstream.targets, "HTTP, TLS and TCP did not all traverse the upstream proxy"
         print("PASS isolated egress: HTTP/TLS rules, credential injection, upstream auth, binary tunnel, host bypass blocked", flush=True)
+        shared_catalog(harness, target, gateway, network, policy, plain, upstream, echo, host_service.server_address[1])
         recovery(harness, target, gateway, network, policy, plain, tls, host_service.server_address[1])
     finally:
         for server in servers:

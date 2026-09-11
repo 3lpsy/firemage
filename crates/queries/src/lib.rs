@@ -20,3 +20,6 @@ pub use file_assets::*;
 
 mod snapshots;
 pub use snapshots::*;
+
+mod egress_catalog;
+pub use egress_catalog::*;

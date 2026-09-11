@@ -9,6 +9,7 @@ pub fn Guided(
     base: Signal<Value>,
     existing: bool,
     vm_id: String,
+    owner: String,
     onconfigure: EventHandler<String>,
 ) -> Element {
     let mut terminal = fields.terminal;
@@ -17,10 +18,10 @@ pub fn Guided(
     let environment_count = base.read()["environment"]
         .as_object()
         .map_or(0, serde_json::Map::len);
-    let egress_summary = if base.read()["egress"].is_object() {
-        "Configured"
+    let egress_summary = if base.read()["egress_policy"].is_string() {
+        "Shared policy"
     } else {
-        "Not configured"
+        "No outbound access"
     };
     rsx! {
         div { class: "vm-form-layout",
@@ -39,8 +40,7 @@ pub fn Guided(
                     crate::network::NetworkFields { fields, vm_id }
                 }
                 Section { id: "egress", title: "Egress", summary: egress_summary,
-                    p { class: "small muted", "Allow HTTP destinations, inject headers, configure signing, upstream proxies and TCP tunnels." }
-                    button { r#type: "button", onclick: move |_| onconfigure.call("egress".into()), "Configure egress" }
+                    crate::egress::EgressFields { fields, base, owner, oncreate: move |_| onconfigure.call("egress".into()) }
                 }
                 Section { id: "environment", title: "Environment", summary: format!("{environment_count} variables"),
                     p { class: "small muted", "Set plain values or references to named secrets." }
@@ -60,7 +60,7 @@ pub fn Guided(
                         button { r#type: "button", onclick: move |_| onconfigure.call("security".into()), "Configure host limits" }
                     } else { p { class: "small muted", "Host limits are managed by Firemage for jailed VMs only." } }
                 }
-                Section { id: "metadata", title: "Metadata", summary: if (fields.metadata)().trim().is_empty() { "Not configured" } else { "Configured" },
+                Section { id: "metadata", title: "Metadata", summary: if (fields.metadata)().trim().is_empty() { "Not configured" } else { "Shared policy" },
                     Editor { label: "Metadata JSON (optional)", id: "vm-metadata", value: fields.metadata, rows: 8 }
                     p { class: "small muted", "MMDS v2 requires a network interface. Leave blank to disable metadata." }
                 }

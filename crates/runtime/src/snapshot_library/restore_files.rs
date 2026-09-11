@@ -29,6 +29,7 @@ impl DiskSwap {
             "initrd".into(),
             "seed.ext4".into(),
             "oci-init-version".into(),
+            "egress-bootstrap".into(),
         ]);
         for name in &managed {
             if let Ok(metadata) = std::fs::symlink_metadata(directory.join(name)) {

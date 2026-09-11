@@ -26,3 +26,5 @@ wasm-bindgen.workspace = true
 firemage-webui-page-secrets = { path = "../page-secrets" }
 
 firemage-webui-page-snapshots = { path = "../page-snapshots" }
+
+firemage-webui-view-egress = { path = "../view-egress" }

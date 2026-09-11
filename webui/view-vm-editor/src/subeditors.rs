@@ -10,9 +10,6 @@ pub fn Subeditors(
 ) -> Element {
     let vm = json!({"spec":spec});
     match kind.as_str() {
-        "egress" => {
-            rsx! { firemage_webui_view_egress::EgressEditor { vm, onclose, onapply, onsaved: |_| {} } }
-        }
         "environment" => {
             rsx! { firemage_webui_view_environment::EnvironmentEditor { vm, onclose, onapply, onsaved: |_| {} } }
         }

@@ -4,7 +4,8 @@ Create and Edit use the same page. Expand a section to configure its settings;
 Apply in a section editor updates the draft. Create VM saves the full definition.
 It does not start a guest. Start prepares missing resources and boots the VM.
 Prepare creates the resources and leaves Firecracker ready without booting.
-Stop a prepared or running VM before editing its configuration.
+Stop a prepared or running VM before editing its general configuration. Egress
+policy assignment and shared policy/proxy edits also apply to running VMs.
 
 The VM list opens a side panel; Open full page shows the same controls and tabs
 on a dedicated page. Duplicate VM copies configuration and references, assigns
@@ -20,11 +21,37 @@ default to mode 0600. Their values are resolved when preparing the private seed
 disk; configuration exports contain secret names. The Attachments tab lists what
 was configured, without displaying secret contents.
 
-Configuration exports use kernel and file aliases. Import resolves those aliases
+Configuration exports use kernel, file and egress policy aliases. Import resolves those aliases
 and secret/network names in the destination account. Local host paths and external
 Firecracker sockets are not portable and cannot be exported. Import assigns fresh
 network addresses for a new VM. Applying configuration to an existing VM uses the
 addresses in the imported document and validates them against reserved addresses.
+
+## Shared egress
+
+Egress below Networks contains policies and upstream proxies. Create a policy on
+its full page, using the section index and collapsible sections for HTTP rules,
+signing, tunnels, TLS and upstream routing. Select that policy in Create/Edit VM;
+the plus action opens its creation page and preserves the VM draft on return.
+The VM must use a Firemage-only network. No policy means no outbound access.
+
+Each policy can select a named upstream proxy, use the host default, or connect
+directly from Firemage. Proxy passwords and private CA bundles reference Secrets.
+Policy and proxy detail panes list associated VMs. Deletion is blocked while any
+VM references a policy or any policy references a proxy, including inactive VMs.
+
+Saving shared rules or an upstream proxy updates all affected running VMs. Existing
+connections close so revoked rules cannot remain active; applications must retry.
+Changing a VM's selected policy affects only that VM. Other VM settings still
+require a stopped VM. Failed updates restore previous access where possible and
+otherwise leave the affected network blocked for repair and retry.
+
+Guest HTTP proxy addresses stay stable while host rules and upstream routing
+change. Newly prepared Firemage-only guests receive proxy bootstrap even without
+an initial policy. Older guests that never had HTTP egress need stop and prepare
+once before enabling it. Non-OCI guests must follow the seed convention to use the
+provided proxy environment and CA. Existing inline policies migrate separately;
+VMs that previously had independent configurations are not merged automatically.
 
 ## Workloads and guest output
 

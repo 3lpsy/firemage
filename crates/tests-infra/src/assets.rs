@@ -16,6 +16,10 @@ const SCRIPTS: &[(&str, &str)] = &[
     ("vm/oci.py", include_str!("../scripts/vm/oci.py")),
     ("vm/egress.py", include_str!("../scripts/vm/egress.py")),
     (
+        "vm/egress_catalog.py",
+        include_str!("../scripts/vm/egress_catalog.py"),
+    ),
+    (
         "vm/egress_recovery.py",
         include_str!("../scripts/vm/egress_recovery.py"),
     ),

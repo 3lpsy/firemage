@@ -2,7 +2,7 @@ VM lifecycle, assets, seed inputs, and managed guest networking.
 
 - Persists VM definitions and observed state in SQLite; serializes operations per VM.
 - Owns Firecracker processes and verifies persisted process identity during recovery.
-- Opens egress listeners before boot, restores registrations after daemon restart, and closes connections on stop.
+- Resolves reusable egress policies/proxies, applies shared changes to running VMs, and recovers interrupted updates after daemon restart.
 - Resolves owner-scoped secrets for boot inputs, outbound proxy requests and OCI pulls; registry dependencies are checked on define/edit/prepare and stored VM documents contain references only.
 
 - Defaults to jailed Firecracker with per-VM identities, cgroup v2 limits and confined assets; trusted and external modes require host policy.

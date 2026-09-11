@@ -1,6 +1,6 @@
 use crate::registry::RegistryForm;
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Info;
+use firemage_webui_component_controls::{Info, SecretFieldLabel};
 use firemage_webui_provider_api::{get, text};
 use serde_json::Value;
 
@@ -40,10 +40,12 @@ pub fn RegistryFields(mut value: Signal<RegistryForm>) -> Element {
                     }
                 }
                 SecretChoice { id: "registry-password", label: "Password secret", value: current.password_secret.clone(), rows: rows.clone(), required: true,
+                    onrefresh: move |_| secrets.restart(),
                     onchange: move |name| value.write().password_secret = name,
                 }
             } else if current.mode == "bearer" {
                 SecretChoice { id: "registry-token", label: "Bearer token secret", value: current.token_secret.clone(), rows: rows.clone(), required: true,
+                    onrefresh: move |_| secrets.restart(),
                     onchange: move |name| value.write().token_secret = name,
                 }
             }
@@ -57,18 +59,17 @@ pub fn RegistryFields(mut value: Signal<RegistryForm>) -> Element {
                     oninput: move |event| value.write().token_realm = event.value(),
                 }
             }
-            SecretChoice { id: "registry-ca", label: "Custom CA secret (optional)", value: current.ca_secret.clone(), rows,
+            SecretChoice { id: "registry-ca", label: "Custom CA Secret (optional)", value: current.ca_secret.clone(), rows,
+                onrefresh: move |_| secrets.restart(),
+                help: rsx! {
+                    Info { title: "Custom registry CA",
+                        "Choose a secret containing PEM CA certificates to trust a private certificate authority for registry requests. HTTPS verification stays enabled. This also works for anonymous registries."
+                    }
+                },
                 onchange: move |name| value.write().ca_secret = name,
             }
             if let Some(Err(error)) = secrets.read().as_ref() {
                 p { class: "small", role: "alert", "Unable to load secrets: {error}" }
-            }
-            div { class: "actions wrap",
-                a { class: "small", href: "#secrets", target: "_blank", rel: "noopener", "Manage secrets" }
-                button { r#type: "button", class: "small", onclick: move |_| secrets.restart(), "Refresh secrets" }
-                Info { title: "Custom registry CA",
-                    "Choose a secret containing PEM CA certificates to trust a private certificate authority for registry requests. HTTPS verification stays enabled. This also works for anonymous registries."
-                }
             }
         }
     }
@@ -82,9 +83,12 @@ fn SecretChoice(
     rows: Value,
     #[props(default)] required: bool,
     onchange: EventHandler<String>,
+    onrefresh: EventHandler<()>,
+    help: Option<Element>,
 ) -> Element {
     rsx! {
-        label { class: "field", r#for: "{id}", span { "{label}" }
+        div { class: "field",
+            SecretFieldLabel { id: id.clone(), label, onrefresh, help }
             select { id, value: "{value}", required, onchange: move |event| onchange.call(event.value()),
                 option { value: "", if required { "Choose a secret" } else { "System trust store" } }
                 for row in rows.as_array().into_iter().flatten() {

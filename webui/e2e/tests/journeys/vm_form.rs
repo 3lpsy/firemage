@@ -51,13 +51,24 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     );
     let mac = h.value("vm-mac").await?;
     anyhow::ensure!(!mac.is_empty(), "MAC was not suggested");
-    h.button("Egress").await?;
-    h.button("Configure egress").await?;
-    h.radio("egress-http-enabled", "Enabled").await?;
+    h.element(By::Css("button[aria-controls='vm-section-egress']"))
+        .await?
+        .click()
+        .await?;
+    h.element(By::Css("button[aria-label='Create Egress policy']"))
+        .await?
+        .click()
+        .await?;
+    h.fill("policy-alias", "form-policy").await?;
+    h.element(By::Id("egress-http-enabled"))
+        .await?
+        .click()
+        .await?;
     h.button("+ Add HTTP rule").await?;
     h.fill("egress-rule-0-host", "model.example.com").await?;
     h.fill("egress-rule-0-path_prefix", "/v1/").await?;
-    apply(h).await?;
+    h.button("Create and select").await?;
+    h.element(By::Id("vm-name")).await?;
     h.fill("vm-memory", "").await?;
     h.button("Environment").await?;
     h.button("Configure environment").await?;
@@ -110,7 +121,7 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     anyhow::ensure!(
         draft.contains("keep-alive")
             && draft.contains("form-secret")
-            && draft.contains("model.example.com"),
+            && draft.contains("egress_policy"),
         "full TOML lost section drafts"
     );
     h.button("Guided setup").await?;
@@ -130,6 +141,12 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     let id = vm["id"].as_str().context("VM id")?;
     let spec = &vm["spec"];
     check(spec)?;
+    let policy_id = spec["egress_policy"].as_str().context("shared policy")?;
+    let policy = h.api(&format!("/v1/egress/policies/{policy_id}")).await?;
+    anyhow::ensure!(
+        policy["policy"]["http"]["rules"][0]["host"] == "model.example.com",
+        "shared policy lost HTTP rules"
+    );
     anyhow::ensure!(vm["state"] == "defined", "creation started the VM");
     anyhow::ensure!(
         spec["network"]["mac"] == mac,
@@ -242,10 +259,7 @@ fn check(spec: &Value) -> Result<()> {
             && spec["secret_attachments"][0]["mode"] == 384,
         "lost attachments"
     );
-    anyhow::ensure!(
-        spec["egress"]["http"]["rules"][0]["host"] == "model.example.com",
-        "lost egress"
-    );
+    anyhow::ensure!(spec["egress_policy"].is_string(), "lost egress");
     anyhow::ensure!(
         spec["files"][0]["content"] == "Review for bugs" && spec["userdata"] == "echo setup",
         "lost boot inputs"

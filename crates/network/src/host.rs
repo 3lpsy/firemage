@@ -23,7 +23,7 @@ pub fn tap_mac(id: &str) -> anyhow::Result<String> {
     )
     .to_ascii_lowercase())
 }
-async fn ip(args: &[&str]) -> anyhow::Result<()> {
+pub(crate) async fn ip(args: &[&str]) -> anyhow::Result<()> {
     let output = Command::new("ip").args(args).output().await?;
     anyhow::ensure!(
         output.status.success(),
@@ -127,6 +127,10 @@ pub async fn remove(id: &str) -> anyhow::Result<()> {
     let _ = ip(&["link", "set", &tap, "down"]).await;
     let _ = Command::new("nft")
         .args(["delete", "table", "netdev", &table])
+        .output()
+        .await?;
+    let _ = Command::new("nft")
+        .args(["delete", "table", "netdev", &format!("{table}pending")])
         .output()
         .await?;
     ip(&["link", "delete", &tap]).await

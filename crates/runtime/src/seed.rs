@@ -32,8 +32,14 @@ impl Runtime {
             let row = firemage_queries::network(&self.db, owner, &net.network).await?;
             let network: firemage_wire::NetworkSpec = serde_json::from_str(&row.spec)?;
             files.push(file("firemage/network.sh", format!("ip link set eth0 up\nip addr flush dev eth0\nip addr add {}/{} dev eth0\nip route replace default via {} dev eth0\n", net.address, network.subnet.prefix_len(), network.gateway)));
-            if let Some(http) = spec.egress.as_ref().and_then(|e| e.http.as_ref()) {
-                let proxy = format!("http://{}:{}", network.gateway, http.port);
+            if matches!(network.policy, firemage_wire::NetworkPolicy::FiremageOnly) {
+                let port = spec
+                    .egress
+                    .as_ref()
+                    .and_then(|e| e.http.as_ref())
+                    .map(|http| http.port)
+                    .unwrap_or(spec.egress_http_port);
+                let proxy = format!("http://{}:{}", network.gateway, port);
                 for name in ["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"] {
                     values.insert(name.into(), proxy.clone());
                 }

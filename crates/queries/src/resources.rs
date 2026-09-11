@@ -1,5 +1,5 @@
 use firemage_orm::{networks, vms};
-use sea_orm::{Set, prelude::*};
+use sea_orm::{Set, TransactionTrait, prelude::*};
 
 pub async fn insert_vm(
     db: &DatabaseConnection,
@@ -8,7 +8,8 @@ pub async fn insert_vm(
     spec: String,
     socket: String,
 ) -> anyhow::Result<vms::Model> {
-    Ok(vms::ActiveModel {
+    let tx = db.begin().await?;
+    let row = vms::ActiveModel {
         id: Set(uuid::Uuid::new_v4().to_string()),
         owner_id: Set(owner.into()),
         name: Set(name.into()),
@@ -19,8 +20,11 @@ pub async fn insert_vm(
         pid: Set(None),
         process_start: Set(None),
     }
-    .insert(db)
-    .await?)
+    .insert(&tx)
+    .await?;
+    crate::egress_catalog::bind_vm_egress(&tx, &row).await?;
+    tx.commit().await?;
+    Ok(row)
 }
 pub async fn vm(db: &DatabaseConnection, owner: &str, id: &str) -> anyhow::Result<vms::Model> {
     vms::Entity::find_by_id(id)

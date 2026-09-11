@@ -2,6 +2,7 @@ use crate::Runtime;
 use firemage_wire::{Vm, VmSpec};
 impl Runtime {
     pub async fn update(&self, owner: &str, id: &str, mut spec: VmSpec) -> anyhow::Result<Vm> {
+        let _catalog = self.lock("egress-catalog").await;
         let _guard = self.lock(id).await;
         let _asset_guard = self.lock("file-assets").await;
         let _kernel_guard = self.lock("kernels").await;
@@ -55,6 +56,7 @@ impl Runtime {
                 );
             }
         }
+        self.normalize_egress(owner, &mut spec).await?;
         crate::view(
             firemage_queries::update_vm_spec(
                 &self.db,

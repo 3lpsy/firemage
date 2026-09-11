@@ -1,0 +1,80 @@
+use sea_orm_migration::prelude::*;
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_index(
+                Index::create()
+                    .name("vms_id_owner")
+                    .table(Alias::new("vms"))
+                    .unique()
+                    .col(Alias::new("id"))
+                    .col(Alias::new("owner_id"))
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table(Alias::new("vm_egress_policies"))
+                    .col(
+                        ColumnDef::new(Alias::new("vm_id"))
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Alias::new("owner_id")).string().not_null())
+                    .col(ColumnDef::new(Alias::new("policy_id")).string().not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from_tbl(Alias::new("vm_egress_policies"))
+                            .from_col(Alias::new("vm_id"))
+                            .from_col(Alias::new("owner_id"))
+                            .to_tbl(Alias::new("vms"))
+                            .to_col(Alias::new("id"))
+                            .to_col(Alias::new("owner_id"))
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from_tbl(Alias::new("vm_egress_policies"))
+                            .from_col(Alias::new("policy_id"))
+                            .from_col(Alias::new("owner_id"))
+                            .to_tbl(Alias::new("egress_policies"))
+                            .to_col(Alias::new("id"))
+                            .to_col(Alias::new("owner_id"))
+                            .on_delete(ForeignKeyAction::Restrict),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("vm_egress_policies_policy")
+                    .table(Alias::new("vm_egress_policies"))
+                    .col(Alias::new("policy_id"))
+                    .to_owned(),
+            )
+            .await
+    }
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(Alias::new("vm_egress_policies"))
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .drop_index(
+                Index::drop()
+                    .name("vms_id_owner")
+                    .table(Alias::new("vms"))
+                    .to_owned(),
+            )
+            .await
+    }
+}

@@ -132,7 +132,7 @@ pub(crate) async fn forward(
     let (mut sender, connection) =
         hyper::client::conn::http1::handshake(TokioIo::new(stream)).await?;
     let cancel = context.cancel.clone();
-    tokio::spawn(async move {
+    context.tasks.spawn(async move {
         tokio::select! {_ = cancel.cancelled()=>{},_ = connection=>{}}
     });
     let uri = parts

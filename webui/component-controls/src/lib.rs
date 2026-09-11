@@ -2,7 +2,9 @@
 use dioxus::prelude::*;
 mod focus;
 mod icon;
+mod secret_field_label;
 pub use icon::Icon;
+pub use secret_field_label::SecretFieldLabel;
 #[component]
 pub fn Field(
     label: String,

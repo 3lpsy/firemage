@@ -29,18 +29,21 @@ pub async fn status(
     let row = crate::resources::owned_vm(&app, &identity, &id).await?;
     let spec: firemage_wire::VmSpec =
         serde_json::from_str(&row.spec).map_err(anyhow::Error::from)?;
-    let policy = app.runtime.effective_egress(&spec);
-    let gateway = if let Some(net) = &spec.network {
+    let policy = app.runtime.effective_egress(&row.owner_id, &spec).await?;
+    let network = if let Some(net) = &spec.network {
         let network =
             firemage_queries::network(&app.runtime.db, &row.owner_id, &net.network).await?;
         Some(
             serde_json::from_str::<firemage_wire::NetworkSpec>(&network.spec)
-                .map_err(anyhow::Error::from)?
-                .gateway,
+                .map_err(anyhow::Error::from)?,
         )
     } else {
         None
     };
+    let gateway = network.as_ref().map(|network| network.gateway);
+    let restricted_network = network.as_ref().is_some_and(|network| {
+        matches!(network.policy, firemage_wire::NetworkPolicy::FiremageOnly)
+    });
     let http = policy.as_ref().and_then(|p| p.http.as_ref());
     let proxy_url = gateway
         .zip(http)
@@ -52,6 +55,6 @@ pub async fn status(
         None
     };
     Ok(Json(
-        json!({"enabled":policy.is_some(),"active":app.runtime.is_egress_active(&id).await,"gateway":gateway,"proxy_url":proxy_url,"http_rules":http.map(|h| &h.rules),"tunnels":tunnels,"upstream":policy.as_ref().and_then(|p|p.upstream.as_ref()),"ca_url":"/v1/egress/ca","ca_fingerprint":fingerprint}),
+        json!({"enabled":policy.is_some(),"active":app.runtime.is_egress_active(&id).await,"restricted_network":restricted_network,"gateway":gateway,"proxy_url":proxy_url,"http_rules":http.map(|h| &h.rules),"tunnels":tunnels,"upstream":policy.as_ref().and_then(|p|p.upstream.as_ref()),"ca_url":"/v1/egress/ca","ca_fingerprint":fingerprint}),
     ))
 }

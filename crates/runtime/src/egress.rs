@@ -18,13 +18,28 @@ impl Runtime {
             })
             .await
     }
-    pub fn effective_egress(&self, spec: &VmSpec) -> Option<EgressPolicy> {
-        spec.egress.clone().map(|mut policy| {
-            if policy.inherit_upstream && policy.upstream.is_none() {
-                policy.upstream = self.config.egress_upstream.clone();
+    pub async fn effective_egress(
+        &self,
+        owner: &str,
+        spec: &VmSpec,
+    ) -> anyhow::Result<Option<EgressPolicy>> {
+        let mut policy = if let Some(id) = &spec.egress_policy {
+            let row = firemage_queries::egress_policy(&self.db, owner, id).await?;
+            let mut policy = self.resolve_catalog_policy(owner, &row).await?;
+            if let Some(http) = &mut policy.http {
+                http.port = spec.egress_http_port;
             }
-            policy
-        })
+            Some(policy)
+        } else {
+            spec.egress.clone()
+        };
+        if let Some(policy) = &mut policy
+            && policy.inherit_upstream
+            && policy.upstream.is_none()
+        {
+            policy.upstream = self.config.egress_upstream.clone();
+        }
+        Ok(policy)
     }
     pub(crate) async fn is_restricted_network(
         &self,
@@ -96,7 +111,7 @@ impl Runtime {
                 "Firemage-only networking requires a managed VM"
             );
         }
-        if let Some(policy) = self.effective_egress(spec) {
+        if let Some(policy) = self.effective_egress(owner, spec).await? {
             policy.validate()?;
             let net = spec
                 .network
@@ -136,13 +151,13 @@ impl Runtime {
         self.validate_dependencies(&row.owner_id, spec).await?;
         self.register_egress_routes(row, spec, network).await
     }
-    async fn register_egress_routes(
+    pub(crate) async fn register_egress_routes(
         &self,
         row: &firemage_orm::vms::Model,
         spec: &VmSpec,
         network: &NetworkSpec,
     ) -> anyhow::Result<()> {
-        if let Some(policy) = self.effective_egress(spec) {
+        if let Some(policy) = self.effective_egress(&row.owner_id, spec).await? {
             anyhow::ensure!(
                 matches!(network.policy, NetworkPolicy::FiremageOnly),
                 "egress requires a Firemage-only network"
@@ -172,45 +187,5 @@ impl Runtime {
         } else {
             false
         }
-    }
-    pub async fn recover_egress(&self) -> anyhow::Result<()> {
-        for row in firemage_queries::vms(&self.db, None).await? {
-            if matches!(row.state.as_str(), "defined" | "stopped" | "failed") {
-                continue;
-            }
-            let row = self.refresh(row).await?;
-            if row.state == "stopped" {
-                continue;
-            }
-            let recovered = async {
-                let spec: VmSpec = serde_json::from_str(&row.spec)?;
-                if spec.egress.is_some() {
-                    let attachment = spec
-                        .network
-                        .as_ref()
-                        .context("missing recovered egress network")?;
-                    let network =
-                        firemage_queries::network(&self.db, &row.owner_id, &attachment.network)
-                            .await?;
-                    self.register_egress_routes(&row, &spec, &serde_json::from_str(&network.spec)?)
-                        .await?;
-                }
-                anyhow::Ok(())
-            }
-            .await;
-            if recovered.is_err() {
-                self.unregister_egress(&row.id).await;
-                let state = row.state.clone();
-                let pid = row.pid;
-                let message = if firemage_network::suspend(&row.id).await.is_ok() {
-                    "VM egress recovery failed; its network interface is disabled. Repair its configuration and restart the VM."
-                } else {
-                    "VM egress recovery failed and its network interface could not be disabled. Inspect host networking before restarting the VM."
-                };
-                firemage_queries::set_vm_state(&self.db, row, &state, Some(message.into()), pid)
-                    .await?;
-            }
-        }
-        Ok(())
     }
 }

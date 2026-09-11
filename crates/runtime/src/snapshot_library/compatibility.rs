@@ -15,6 +15,24 @@ pub(super) fn ensure_target(manifest: &SnapshotManifest, target: &VmSpec) -> any
         "snapshot architecture differs from this host"
     );
     let source = &manifest.spec;
+    if manifest.files.contains_key("egress-bootstrap")
+        || source.egress_policy.is_some()
+        || source
+            .egress
+            .as_ref()
+            .is_some_and(|policy| policy.http.is_some())
+    {
+        let source_port = source
+            .egress
+            .as_ref()
+            .and_then(|policy| policy.http.as_ref())
+            .map(|http| http.port)
+            .unwrap_or(source.egress_http_port);
+        anyhow::ensure!(
+            source_port == target.egress_http_port,
+            "snapshot guest HTTP proxy port differs from target VM; use the saved guest-facing port"
+        );
+    }
     anyhow::ensure!(
         source.vcpus == target.vcpus && source.memory_mib == target.memory_mib,
         "snapshot CPU or memory differs from target VM"

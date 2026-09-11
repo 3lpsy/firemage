@@ -85,6 +85,13 @@ impl Runtime {
             self.config.seed_max_bytes(),
         )
         .await?;
+        if self.is_restricted_network(&row.owner_id, spec).await? {
+            tokio::fs::write(
+                dir.join("egress-bootstrap"),
+                spec.egress_http_port.to_string(),
+            )
+            .await?;
+        }
         Ok(())
     }
     pub(crate) async fn ensure_prepared_assets(

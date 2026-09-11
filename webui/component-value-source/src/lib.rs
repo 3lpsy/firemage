@@ -1,6 +1,6 @@
 //! Literal or write-only secret-reference form control.
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Icon;
+use firemage_webui_component_controls::SecretFieldLabel;
 use firemage_webui_provider_api::{get, text};
 use serde_json::{Value, json};
 
@@ -29,7 +29,8 @@ pub fn ValueSource(
                 label { input { r#type: "radio", name: "{mode_id}", checked: is_secret, onchange: move |_| onchange.call(json!({"secret":""})) } "Sensitive secret" }
             }
             if is_secret {
-                label { class: "field", r#for: "{secret_id}", span { "Secret name" }
+                div { class: "field",
+                    SecretFieldLabel { id: secret_id.clone(), label: "Secret name", onrefresh: move |_| secrets.restart() }
                     select { id: "{secret_id}", value: r#"{text(&value, "secret")}"#,
                         onchange: move |event| { let mut value = secret_value.clone(); value["secret"] = json!(event.value()); onchange.call(value); },
                         option { value: "", "Choose a secret" }
@@ -45,10 +46,6 @@ pub fn ValueSource(
                 }
                 if let Some(Err(error)) = secrets.read().as_ref() {
                     p { class: "small", role: "alert", "Unable to load secrets: {error}" }
-                }
-                div { class: "actions wrap",
-                    a { class: "small", href: "#secrets", target: "_blank", rel: "noopener", "Manage secrets " Icon { name: "external", size: 12 } }
-                    button { r#type: "button", class: "small", onclick: move |_| secrets.restart(), "Refresh secrets" }
                 }
                 if prefix {
                     label { class: "field", r#for: "{prefix_id}", span { "Prefix before secret (optional)" }

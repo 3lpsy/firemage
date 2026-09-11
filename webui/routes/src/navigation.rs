@@ -51,18 +51,26 @@ pub fn navigate(page: Page) {
     }
 }
 
-fn current_vm_id() -> String {
+fn current_path(prefix: &str) -> String {
     web_sys::window()
         .and_then(|window| window.location().hash().ok())
-        .and_then(|hash| hash.strip_prefix("#vms/").map(str::to_owned))
+        .and_then(|hash| hash.strip_prefix(prefix).map(str::to_owned))
         .unwrap_or_default()
 }
 
 pub fn use_vm_id() -> Signal<String> {
-    let mut id = use_signal(current_vm_id);
+    use_path("#vms/")
+}
+
+pub fn use_egress_path() -> Signal<String> {
+    use_path("#egress/")
+}
+
+fn use_path(prefix: &'static str) -> Signal<String> {
+    let mut id = use_signal(|| current_path(prefix));
     let listener = use_hook(move || {
         let listener = Rc::new(Closure::<dyn FnMut(web_sys::Event)>::new(move |_| {
-            id.set(current_vm_id());
+            id.set(current_path(prefix));
         }));
         if let Some(window) = web_sys::window() {
             let _ = window.add_event_listener_with_callback(

@@ -56,7 +56,11 @@ async fn value(source: &ValueSource, secrets: &dyn SecretResolver) -> Result<Str
     }
 }
 
-pub(crate) async fn tls(stream: Stream, host: &str, pem: Option<&str>) -> Result<Stream> {
+pub fn validate_ca_pem(pem: &str) -> Result<()> {
+    roots(Some(pem)).map(|_| ())
+}
+
+fn roots(pem: Option<&str>) -> Result<rustls::RootCertStore> {
     let mut roots = rustls::RootCertStore::empty();
     roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     if let Some(pem) = pem {
@@ -67,6 +71,11 @@ pub(crate) async fn tls(stream: Stream, host: &str, pem: Option<&str>) -> Result
             roots.add(certificate)?;
         }
     }
+    Ok(roots)
+}
+
+pub(crate) async fn tls(stream: Stream, host: &str, pem: Option<&str>) -> Result<Stream> {
+    let roots = roots(pem)?;
     let mut config = rustls::ClientConfig::builder_with_provider(Arc::new(
         rustls::crypto::ring::default_provider(),
     ))

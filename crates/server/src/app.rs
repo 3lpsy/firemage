@@ -36,6 +36,7 @@ impl App {
 }
 pub fn router(app: App) -> Router {
     Router::new()
+        .merge(crate::egress_catalog::routes())
         .route(
             "/health",
             get(|| async { axum::Json(serde_json::json!({"status":"ok"})) }),
@@ -204,6 +205,7 @@ pub async fn serve_managed(
         .map_err(|_| anyhow::anyhow!("another Firemage server is using this data directory"))?;
     let db = firemage_queries::connect(&config.database()).await?;
     let runtime = firemage_runtime::Runtime::new(db, config.clone());
+    runtime.migrate_egress_catalog().await?;
     runtime.recover_egress().await?;
     let mut state = App::new(runtime.clone())?;
     state.management = management;

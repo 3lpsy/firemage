@@ -1,5 +1,8 @@
 Embedded HTTP proxy and TCP tunnel listeners for isolated VM egress.
 
+Batch registration replacement binds new listeners before changing routes and
+cancels and joins old connections so permission revocation covers existing streams.
+
 - Listener identity is gateway address, port and registered guest source IP; unregister revokes connections and releases unused ports.
 - HTTPS CONNECT always terminates TLS for per-request policy checks. The persisted private CA signs guest-facing certificates; upstream TLS remains verified.
 - DNS resolves once per connection, and approved numeric destinations are used through authenticated HTTP/HTTPS CONNECT or SOCKS5 proxies. Upstream failure never falls back to direct access.

@@ -1,5 +1,6 @@
 //! Shared full-page VM definition form and draft-only section editors.
 mod draft;
+mod egress;
 mod extra_editor;
 mod fields;
 mod guided;
@@ -35,6 +36,7 @@ pub fn VmEditor(
     let mut toml_text = use_signal(|| spec::to_toml(&initial).unwrap_or_default());
     let mut error = use_signal(String::new);
     let mut busy = use_signal(|| false);
+    let mut policy_creating = use_signal(|| false);
     let mut subeditor = use_signal(|| None::<(String, Value)>);
     use_effect(move || {
         if !error().is_empty()
@@ -52,13 +54,31 @@ pub fn VmEditor(
     });
     let is_existing = existing.is_some();
     let vm_id = existing.clone().unwrap_or_default();
-    let onconfigure = move |kind| match fields.value(&base(), true) {
-        Ok(value) => {
-            subeditor.set(Some((kind, value)));
-            error.set(String::new());
+    let onconfigure = move |kind: String| {
+        if kind == "egress" {
+            policy_creating.set(true);
+            return;
         }
-        Err(message) => error.set(message),
+        match fields.value(&base(), true) {
+            Ok(value) => {
+                subeditor.set(Some((kind, value)));
+                error.set(String::new());
+            }
+            Err(message) => error.set(message),
+        }
     };
+    if policy_creating() {
+        return rsx! { firemage_webui_view_egress::PolicyEditor { selecting: true,
+            onclose: move |_| policy_creating.set(false),
+            onsaved: move |policy: Value| {
+                let mut value = base();
+                if !value.is_object() { value = serde_json::json!({}); }
+                value["egress_policy"] = policy["id"].clone();
+                value.as_object_mut().unwrap().remove("egress");
+                base.set(value); policy_creating.set(false);
+            },
+        } };
+    }
     rsx! {
         section { class: "vm-editor-page",
             div { class: "vm-page-breadcrumb",
@@ -112,7 +132,7 @@ pub fn VmEditor(
                     if advanced() {
                         Editor { label: "VM configuration", id: "vm-toml", value: toml_text, rows: 30 }
                     } else {
-                        guided::Guided { fields, base, existing: is_existing, vm_id, onconfigure }
+                        guided::Guided { fields, base, existing: is_existing, vm_id, owner: vm["owner_id"].as_str().map(str::to_owned).unwrap_or_else(|| text(&auth.session.read()["user"],"id")), onconfigure }
                     }
                 }
                 div { class: "vm-editor-footer",

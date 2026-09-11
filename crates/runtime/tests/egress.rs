@@ -154,6 +154,7 @@ async fn recovery_failure_keeps_management_available_and_records_error() {
             .unwrap()
             .contains("VM egress recovery failed")
     );
+    assert!(dir.path().join("egress-pending").join(&row.id).is_file());
     assert!(!runtime.is_egress_active(&row.id).await);
     assert!(runtime.refresh(recovered).await.unwrap().error.is_some());
 }

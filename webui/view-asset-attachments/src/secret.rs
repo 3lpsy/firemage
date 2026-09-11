@@ -1,6 +1,6 @@
 use crate::AttachmentForm;
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Notice;
+use firemage_webui_component_controls::{Notice, SecretFieldLabel};
 use firemage_webui_provider_api::{get, text};
 
 #[component]
@@ -8,7 +8,8 @@ pub fn SecretPicker(mut value: Signal<Vec<AttachmentForm>>, index: usize) -> Ele
     let mut rows = use_resource(|| async { get("/v1/secrets").await });
     rsx! {
         div { class: "secret-attachment-picker",
-            label { class: "field", r#for: "vm-secret-file-{index}", span { "Secret name" }
+            div { class: "field",
+                SecretFieldLabel { id: "vm-secret-file-{index}", label: "Secret name", onrefresh: move |_| rows.restart() }
                 input { id: "vm-secret-file-{index}", list: "vm-secret-file-options-{index}", required: true,
                     placeholder: "Search secret names", autocomplete: "off",
                     value: value.read()[index].secret.clone().unwrap_or_default(),
@@ -21,10 +22,6 @@ pub fn SecretPicker(mut value: Signal<Vec<AttachmentForm>>, index: usize) -> Ele
                 }
             }
             if let Some(Err(error)) = rows.read().as_ref() { Notice { message: error.clone() } }
-            div { class: "actions",
-                a { href: "#secrets", target: "_blank", rel: "noopener", "Manage secrets" }
-                button { r#type: "button", onclick: move |_| rows.restart(), "Refresh" }
-            }
         }
     }
 }

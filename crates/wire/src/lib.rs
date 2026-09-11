@@ -53,3 +53,5 @@ pub use guest_file::*;
 
 mod snapshot;
 pub use snapshot::*;
+mod egress_catalog;
+pub use egress_catalog::*;

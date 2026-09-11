@@ -141,12 +141,16 @@ pub async fn update_vm_spec(
     name: String,
     spec: String,
 ) -> anyhow::Result<vms::Model> {
+    let tx = db.begin().await?;
     let mut active = row.into_active_model();
     active.name = Set(name);
     active.spec = Set(spec);
     active.state = Set("defined".into());
     active.error = Set(None);
-    Ok(active.update(db).await?)
+    let row = active.update(&tx).await?;
+    crate::egress_catalog::bind_vm_egress(&tx, &row).await?;
+    tx.commit().await?;
+    Ok(row)
 }
 pub async fn all_networks(db: &DatabaseConnection) -> anyhow::Result<Vec<networks::Model>> {
     Ok(networks::Entity::find().all(db).await?)

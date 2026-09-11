@@ -11,3 +11,8 @@ firemage-webui-provider-api = { path = "../provider-api" }
 firemage-webui-provider-auth = { path = "../provider-auth" }
 firemage-webui-component-controls = { path = "../component-controls" }
 firemage-webui-component-value-source = { path = "../component-value-source" }
+
+firemage-wire = { path = "../../crates/wire" }
+firemage-webui-routes = { path = "../routes" }
+web-sys = { workspace = true, features = ["Document", "Element"] }
+gloo-timers.workspace = true

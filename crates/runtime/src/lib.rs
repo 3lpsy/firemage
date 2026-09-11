@@ -12,6 +12,7 @@ mod edit;
 mod vm_config;
 
 mod egress;
+mod egress_catalog;
 mod seed;
 mod workload;
 

@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct VmConfigDocument {
     pub version: u32,
     pub kernel_alias: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub egress_policy_alias: Option<String>,
     #[serde(default)]
     pub attachments: Vec<ConfigAttachment>,
     pub vm: VmSpec,

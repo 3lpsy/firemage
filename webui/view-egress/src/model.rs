@@ -38,6 +38,13 @@ impl Draft {
             original: value.clone(),
         }
     }
+    pub fn policy(&self) -> Result<Value, String> {
+        let mut value = self.spec(&json!({"network": {}}))?["egress"].clone();
+        if value.is_null() {
+            value = json!({"inherit_upstream": self.inherit_upstream, "tunnels": []});
+        }
+        Ok(value)
+    }
     pub fn spec(&self, original: &Value) -> Result<Value, String> {
         let mut spec = original.clone();
         if !self.http && self.tunnels.is_empty() {

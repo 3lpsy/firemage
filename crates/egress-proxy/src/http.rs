@@ -32,6 +32,7 @@ pub(crate) struct Context {
     pub policy: Arc<HttpProxy>,
     pub ca: Arc<Authority>,
     pub cancel: CancellationToken,
+    pub tasks: tokio_util::task::TaskTracker,
     pub secrets: Arc<dyn SecretResolver>,
     pub upstream: Option<firemage_egress_policy::UpstreamProxy>,
 }
@@ -89,7 +90,7 @@ async fn handle(
         return Ok(response(StatusCode::FORBIDDEN, "CONNECT denied\n"));
     };
     let upgrade = hyper::upgrade::on(&mut request);
-    tokio::spawn(async move {
+    context.tasks.clone().spawn(async move {
         let cancel = context.cancel.clone();
         let work = async {
             let stream = TokioIo::new(upgrade.await?);

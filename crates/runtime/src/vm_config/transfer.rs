@@ -37,9 +37,19 @@ impl Runtime {
                 mode: attachment.mode,
             });
         }
+        let egress_policy_alias = if let Some(policy_id) = spec.egress_policy.take() {
+            Some(
+                firemage_queries::egress_policy(&self.db, owner, &policy_id)
+                    .await?
+                    .alias,
+            )
+        } else {
+            None
+        };
         let document = VmConfigDocument {
             version: 1,
             kernel_alias,
+            egress_policy_alias,
             attachments,
             vm: spec,
         };
@@ -67,6 +77,21 @@ impl Runtime {
             firemage_queries::vm(&self.db, owner, id).await?;
         }
         let mut references = Vec::new();
+        if let Some(alias) = &doc.egress_policy_alias {
+            let policies = firemage_queries::egress_policies(&self.db, Some(owner)).await?;
+            let policy = policies
+                .iter()
+                .find(|policy| &policy.alias == alias)
+                .with_context(|| {
+                    format!("egress policy alias {alias:?} was not found in this owner's library")
+                })?;
+            doc.vm.egress_policy = Some(policy.id.clone());
+            references.push(reference("Egress policy", alias));
+            if let Some(proxy_id) = &policy.upstream_proxy_id {
+                let proxy = firemage_queries::upstream_proxy(&self.db, owner, proxy_id).await?;
+                references.push(reference("Upstream proxy", &proxy.alias));
+            }
+        }
         if let Some(alias) = &doc.kernel_alias {
             let aliases = firemage_queries::kernel_aliases(&self.db).await?;
             let kernel = aliases.iter().find(|item| &item.alias == alias)

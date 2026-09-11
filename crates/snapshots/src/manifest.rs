@@ -43,7 +43,11 @@ pub fn validate_manifest(manifest: &SnapshotManifest, limit: u64) -> anyhow::Res
             .all(|name| manifest.files.contains_key(name)),
         "snapshot bundle is missing required VM files"
     );
-    required.extend(["seed.ext4".into(), "oci-init-version".into()]);
+    required.extend([
+        "seed.ext4".into(),
+        "oci-init-version".into(),
+        "egress-bootstrap".into(),
+    ]);
     ensure!(
         manifest.files.keys().all(|name| required.contains(name)),
         "snapshot bundle contains unexpected files"

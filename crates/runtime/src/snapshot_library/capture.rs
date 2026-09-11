@@ -48,7 +48,7 @@ impl Runtime {
             );
         }
         let mut names = vec!["kernel".to_owned(), "rootfs.ext4".into()];
-        for optional in ["initrd", "oci-init-version"] {
+        for optional in ["initrd", "oci-init-version", "egress-bootstrap"] {
             if self.directory(id).join(optional).try_exists()? {
                 names.push(optional.into());
             }

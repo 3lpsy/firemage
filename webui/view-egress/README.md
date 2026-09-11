@@ -1,7 +1,7 @@
-Per-VM egress view in the VM inspector’s Egress tab.
+Shared egress catalog and VM egress views.
 
-- Edits HTTP allow rules, intercepted HTTPS, fixed TCP tunnels, and direct or inherited upstream proxy routes.
-- Configures secret-backed headers and AWS SigV4/HMAC signing; values remain write-only.
-- Shows listener status, guest proxy commands, CA download, and destination mappings.
-- Saves the full VM definition while preserving advanced fields and private upstream CA settings.
-- Network and destination authorization remain enforced by the server.
+- `#egress` lists policies and upstream proxies with usage details and protected deletion.
+- Policy Create/Edit pages use section navigation and collapsible HTTP, tunnel, upstream and TLS editors; proxy editing uses a dialog.
+- VM forms select reusable policies and preserve their draft while creating one. VM details can assign policies while running.
+- Secret-backed headers, signing and proxy credentials remain references; live updates use revision guards and report server failures.
+- The server enforces ownership, dependency checks, live engine updates and deletion restrictions.
