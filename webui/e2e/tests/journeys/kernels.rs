@@ -6,11 +6,42 @@ pub async fn kernels(h: &Harness) -> Result<()> {
     h.login("admin").await?;
     h.navigate("Kernels").await?;
     h.text("vmlinux").await?;
+    let refresh = h
+        .element(By::Css("button[aria-label='Refresh kernels']"))
+        .await?;
+    anyhow::ensure!(
+        refresh.text().await?.is_empty(),
+        "kernel refresh is not icon-only"
+    );
     let source = tempfile::NamedTempFile::new()?;
     std::fs::write(source.path(), b"uploaded browser kernel")?;
     h.button("+ Add kernel").await?;
+    h.element(By::Css("button[aria-label='About Kernel alias']"))
+        .await?
+        .click()
+        .await?;
+    h.text("Renaming preserves existing VM selections.").await?;
+    h.element(By::Css(
+        "[role='dialog'][aria-label='Kernel alias'] button[aria-label='Close dialog']",
+    ))
+    .await?
+    .click()
+    .await?;
     h.fill("kernel-add-alias", "Browser kernel").await?;
     h.radio("kernel-source", "Remote URL").await?;
+    let checksum = h.element(By::Id("kernel-sha")).await?;
+    anyhow::ensure!(
+        checksum.attr("required").await?.is_none()
+            && checksum
+                .attr("placeholder")
+                .await?
+                .is_some_and(|value| !value.is_empty()),
+        "kernel checksum is not optional and explained"
+    );
+    h.fill("kernel-url", "https://127.0.0.1/kernel").await?;
+    h.fill("kernel-name", "remote-fixture").await?;
+    h.modal_button("Add kernel").await?;
+    h.text("public destination").await?;
     h.fill("kernel-url", "https://example.com/kernel").await?;
     h.fill("kernel-sha", "invalid-checksum").await?;
     h.fill("kernel-name", "remote-fixture").await?;
@@ -26,6 +57,8 @@ pub async fn kernels(h: &Harness) -> Result<()> {
     h.absent(By::Css("[role='dialog']")).await?;
     h.text("uploaded-kernel").await?;
     h.row_button("uploaded-kernel", "Edit alias").await?;
+    h.element(By::Css("button[aria-label='About Kernel alias']"))
+        .await?;
     h.fill("kernel-alias", "Recommended").await?;
     h.modal_button("Save alias").await?;
     h.absent(By::Css("[role='dialog']")).await?;

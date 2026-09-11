@@ -7,6 +7,13 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
     h.login("admin").await?;
     h.navigate("Snapshots").await?;
     h.text("No snapshots yet").await?;
+    let refresh = h
+        .element(By::Css("button[aria-label='Refresh snapshots']"))
+        .await?;
+    anyhow::ensure!(
+        refresh.text().await?.is_empty(),
+        "snapshot refresh is not icon-only"
+    );
     h.button("Save VM snapshot").await?;
     h.text("Pause a jailed VM before saving a snapshot.")
         .await?;
@@ -62,7 +69,10 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
 
     let fixture = tempfile::tempdir()?;
     let archive = bundle(fixture.path())?;
-    h.button("Upload snapshot").await?;
+    h.element(By::Css("button[aria-label='Upload snapshot']"))
+        .await?
+        .click()
+        .await?;
     h.fill("snapshot-upload-alias", "imported-checkpoint")
         .await?;
     h.element(By::Id("snapshot-upload-file"))
@@ -105,8 +115,29 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         "upload must not silently trust or bind an informational source name"
     );
     let id = snapshot["id"].as_str().context("snapshot ID")?;
-    let picker = h.element(By::Css(".snapshot-restore input[list]")).await?;
+    h.element(By::Css(".snapshot-vm-picker .kernel-trigger"))
+        .await?
+        .click()
+        .await?;
+    let picker = h
+        .element(By::Css(".snapshot-vm-picker input[role='combobox']"))
+        .await?;
     picker.send_keys("snapshot-target").await?;
+    let labels = h
+        .driver
+        .find_all(By::Css(".snapshot-vm-picker [role='option'] strong"))
+        .await?;
+    anyhow::ensure!(
+        labels.len() == 2,
+        "restore picker lost duplicate-name choices"
+    );
+    for label in labels {
+        anyhow::ensure!(
+            label.text().await? == "snapshot-target",
+            "restore picker used state or owner UUID as the VM label"
+        );
+    }
+    h.screenshot("snapshot-vm-picker").await?;
     let restore = h
         .driver
         .find(By::Css(".snapshot-restore button.primary"))
@@ -124,7 +155,10 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         "restore accepted an ambiguous VM name"
     );
     picker.clear().await?;
-    picker.send_keys(&target_choice).await?;
+    picker.send_keys(target_id).await?;
+    picker.send_keys(Key::Down + Key::Enter).await?;
+    h.element(By::Css(".snapshot-vm-picker .kernel-trigger:focus"))
+        .await?;
     h.element(By::Css(".snapshot-restore button.primary"))
         .await?
         .click()

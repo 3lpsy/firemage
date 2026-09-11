@@ -21,7 +21,6 @@ pub fn Tokens() -> Element {
             div {
                 div { class: "eyebrow", "ACCESS" }
                 h1 { "API tokens" }
-                p { class: "muted", "Credentials for scripts, runners, and automation." }
             }
             button { class: "primary", onclick: move |_| creating.set(true), "+ Create API token" }
         }

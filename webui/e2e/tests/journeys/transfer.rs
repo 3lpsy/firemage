@@ -33,7 +33,11 @@ pub async fn transfer(h: &Harness) -> Result<()> {
             ),
         "export did not use portable references or exposed a secret"
     );
-    let download = h.element(By::Css("a[download='vm-config.toml']")).await?;
+    let download = h
+        .element(By::XPath(
+            "//a[@download='vm-config.toml' and normalize-space(.)='Export']",
+        ))
+        .await?;
     anyhow::ensure!(
         download
             .attr("href")
@@ -42,6 +46,23 @@ pub async fn transfer(h: &Harness) -> Result<()> {
             .starts_with("data:application/toml;charset=utf-8,"),
         "export download is missing"
     );
+    anyhow::ensure!(
+        h.driver.current_url().await?.fragment()
+            == Some(&format!("vms/{original_id}/configuration")),
+        "VM tab was not written to its URL"
+    );
+    h.driver.refresh().await?;
+    h.element(By::Css("pre.config-export")).await?;
+    h.element(By::XPath("//*[@id='vm-detail']//div[contains(@class,'tabs')]/button[normalize-space(.)='Environment']"))
+        .await?.click().await?;
+    h.element(By::XPath("//*[@id='vm-detail']//div[contains(@class,'tabs')]/button[contains(@class,'active') and normalize-space(.)='Environment']")).await?;
+    h.driver.back().await?;
+    h.element(By::Css("pre.config-export")).await?;
+    h.driver.forward().await?;
+    h.element(By::XPath("//*[@id='vm-detail']//div[contains(@class,'tabs')]/button[contains(@class,'active') and normalize-space(.)='Environment']")).await?;
+    h.element(By::XPath("//*[@id='vm-detail']//div[contains(@class,'tabs')]/button[normalize-space(.)='Configuration']"))
+        .await?.click().await?;
+    h.element(By::Css("pre.config-export")).await?;
     h.screenshot("vm-config-export").await?;
     let exact = h.api(&format!("/v1/vms/{original_id}/config")).await?["toml"]
         .as_str()

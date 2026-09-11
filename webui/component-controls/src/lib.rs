@@ -4,9 +4,11 @@ mod clipboard;
 mod focus;
 mod icon;
 mod secret_field_label;
+mod shell_editor;
 pub use clipboard::{CopyButton, CopySource};
 pub use icon::Icon;
 pub use secret_field_label::SecretFieldLabel;
+pub use shell_editor::ShellEditor;
 #[component]
 pub fn Field(
     label: String,

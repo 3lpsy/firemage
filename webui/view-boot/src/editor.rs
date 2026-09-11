@@ -66,7 +66,7 @@ pub fn BootEditor(
                     h3 { class: "egress-section", "Userdata"
                         Info { title: "Userdata execution order", "Userdata is a shell script run after networking, environment variables, and file copies are ready. The OCI guest runs it using /bin/sh. Custom images must implement the seed initialization sequence. Use secret environment references instead of putting credentials in this script." }
                     }
-                    Editor { label: "Post-setup script", id: "boot-userdata", value: userdata, rows: 8 }
+                    ShellEditor { label: "Post-setup script", id: "boot-userdata", value: userdata, rows: 8 }
                 }
                 if onapply.is_some() { p { class: "small muted", "Applied changes are saved when you submit the VM form." } }
                 div { class: "actions end",

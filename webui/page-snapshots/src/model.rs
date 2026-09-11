@@ -26,7 +26,10 @@ pub fn snapshot_choice(snapshot: &Value) -> String {
     format!("{} ({})", text(snapshot, "alias"), text(snapshot, "id"))
 }
 pub fn vm_choice(vm: &Value) -> String {
-    format!("{} ({})", text(&vm["spec"], "name"), text(vm, "id"))
+    format!("{} ({})", vm_name(vm), text(vm, "id"))
+}
+pub fn vm_name(vm: &Value) -> String {
+    text(&vm["spec"], "name")
 }
 pub fn is_restore_target(vm: &Value, snapshot: &Value) -> bool {
     matches!(text(vm, "state").as_str(), "stopped" | "defined" | "failed")

@@ -4,7 +4,7 @@ use firemage_webui_provider_api::{encode, get};
 use firemage_webui_view_vm_detail::VmDetail;
 
 #[component]
-pub fn VmPage(id: String) -> Element {
+pub fn VmPage(id: String, tab: firemage_webui_routes::VmTab) -> Element {
     let mut refresh = use_signal(|| 0u32);
     let vm = use_resource(move || {
         let _ = refresh();
@@ -21,7 +21,7 @@ pub fn VmPage(id: String) -> Element {
         div { class: "vm-page-breadcrumb", a { href: "#vms", "Virtual machines" } span { "/" } span { "VM details" } }
         match vm.read().as_ref() {
             Some(Ok(vm)) => rsx! { VmDetail {
-                vm: vm.clone(), full_page: true,
+                vm: vm.clone(), full_page: true, selected_tab: tab,
                 onchanged: move |_| refresh += 1,
                 onclose: move |_| firemage_webui_routes::navigate(firemage_webui_routes::Page::Vms),
             } },
@@ -63,7 +63,7 @@ pub fn EditVmPage(id: String) -> Element {
             } },
             Some(Ok(_)) => rsx! {
                 Notice { message: "Stop the VM before editing its configuration." }
-                a { href: "#vms/{vm_id}", "Back to virtual machine" }
+                a { href: "#vms/{vm_id}/overview", "Back to virtual machine" }
             },
             Some(Err(error)) => rsx! { Notice { message: error.clone() } },
             None => rsx! { p { "Loading VM…" } },

@@ -90,6 +90,7 @@ button.icon-button,a.icon-button {
   border-color:transparent;
   padding:5px;
   min-width:30px;
+  min-height:30px;
   color:var(--muted);
   font-size:20px;
 }
@@ -444,8 +445,18 @@ footer span:first-child {
   margin-bottom:16px;
 }
 .heading.compact.vm-tab-heading {
-  margin-bottom:0;
+  margin:0;
+  padding:0;
+  gap:12px;
+  min-height:28px;
+  flex-wrap:wrap;
 }
+.vm-detail>.tabs.scroll { margin-bottom:12px; }
+.heading.compact.vm-tab-heading .actions { margin:0; }
+.vm-detail .heading.compact.vm-tab-heading button:not(.info-button),
+.vm-detail .heading.compact.vm-tab-heading a.button { min-height:28px; padding:4px 8px; }
+.vm-detail .heading.compact.vm-tab-heading button.icon-button { min-width:28px; padding:4px; }
+.vm-tab-heading h3 { display:flex; align-items:center; gap:6px; }
 .heading.compact h2 {
   margin-bottom:7px;
 }
@@ -1199,7 +1210,7 @@ body:has(.modal-backdrop) { overflow:hidden; }
 
 .vm-attachments { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0; margin: 12px 0; }
 .attachment-row { margin-bottom: 18px; }
-.attachment-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 12px; align-items: end; }
+.attachment-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr); gap: 12px; align-items: end; }
 .attachment-fields .field { margin-bottom: 0; }
 .attachment-fields > button { margin-bottom: 0; }
 .attachment-fields .kernel-picker { margin-bottom: 0; }
@@ -1274,3 +1285,11 @@ body:has(.modal-backdrop) { overflow:hidden; }
     .vm-form-section-body { padding-left: 4px; }
     .vm-editor-footer { align-items: flex-end; }
 }
+
+.file-ownership-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; min-width:0; align-items:end; }
+.file-ownership-fields .field { margin:10px 0 0; min-width:0; }
+.file-ownership-fields input { min-width:0; width:100%; }
+.file-ownership-fields .field>span { overflow-wrap:anywhere; }
+.destination-field-label { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+.destination-label-text { min-width:0; overflow-wrap:anywhere; }
+.destination-field-label .icon-button { flex-shrink:0; min-height:28px; }

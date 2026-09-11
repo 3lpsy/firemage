@@ -16,6 +16,7 @@ pub fn VmDetail(
     onchanged: EventHandler<()>,
     onclose: EventHandler<()>,
     #[props(default)] full_page: bool,
+    #[props(default)] selected_tab: firemage_webui_routes::VmTab,
 ) -> Element {
     let auth = use_auth();
     let networks =
@@ -41,7 +42,8 @@ pub fn VmDetail(
         });
     let id = text(&vm, "id");
     let state = text(&vm, "state");
-    let mut tab = use_signal(|| "Overview".to_owned());
+    let mut tab = use_signal(firemage_webui_routes::VmTab::default);
+    let active_tab = if full_page { selected_tab } else { tab() };
     let mut duplicating = use_signal(|| false);
     let edit_id = id.clone();
     let edit =
@@ -97,7 +99,7 @@ pub fn VmDetail(
                     span { class: "mono small muted", "{id}" }
                 }
                 if !full_page {
-                    a { class: "icon-button", href: "#vms/{id}", title: "Open full page", "aria-label": "Open full page", Icon { name: "external", size: 16 } }
+                    a { class: "icon-button", href: format!("#vms/{id}/{}", active_tab.slug()), title: "Open full page", "aria-label": "Open full page", Icon { name: "external", size: 16 } }
                 }
                 button {
                     class: "icon-button",
@@ -147,6 +149,11 @@ pub fn VmDetail(
                     button { disabled: busy() || vm["spec"]["socket"].is_string(), onclick: move |_| duplicating.set(true), "Duplicate VM" }
                     div { class: "actions",
                         button {
+                            disabled: busy() || !matches!(state.as_str(), "defined" | "stopped" | "failed"),
+                            onclick: move |_| edit.call(()),
+                            "Configure"
+                        }
+                        button {
                             class: "danger subtle",
                             disabled: busy() || !matches!(state.as_str(), "defined" | "stopped" | "failed"),
                             title: "Stop the VM before deleting its managed disks and files",
@@ -158,16 +165,21 @@ pub fn VmDetail(
                 }
             }
             div { class: "tabs scroll",
-                for label in ["Overview", "Configuration", "Security", "Egress", "Environment", "Attachments", "Boot", "Serial", "Web Shell", "Files", "Snapshots", "Metadata", "Firecracker Logs", "Advanced"] {
+                for selected in firemage_webui_routes::VmTab::ALL {
                     button {
-                        class: if tab() == label { "active" } else { "" },
-                        onclick: move | _
-                                                        | tab.set(label.into()),
-                        "{label}"
+                        class: if active_tab == selected { "active" } else { "" },
+                        onclick: {
+                            let id = id.clone();
+                            move |_| {
+                                if full_page { firemage_webui_routes::navigate_vm_tab(&id, selected); }
+                                else { tab.set(selected); }
+                            }
+                        },
+                        "{selected.label()}"
                     }
                 }
             }
-            match tab().as_str() {
+            match active_tab.label() {
                 "Overview" => rsx! {
                     dl { class: "key-values",
                         dt { "vCPUs" }
@@ -193,21 +205,10 @@ pub fn VmDetail(
                         dt { "Owner" }
                         dd { class: "mono small", r#"{vm["owner_id"].as_str().unwrap_or_default()}"# }
                     }
-                    if auth.is_admin() {
-                        div { class: "actions wrap",
-                            button {
-                                disabled: ! matches!(state.as_str(), "defined" |
-                                                                        "stopped" | "failed"),
-                                onclick: move |_| edit.call(()),
-                                "Configure VM"
-                            }
 
-                        }
-                        p { class: "small muted", "Stop the VM before changing its configuration or deleting it." }
-                    }
                 },
-                "Configuration" => rsx! { firemage_webui_view_vm_transfer::Configuration { vm: vm.clone(), onedit: edit, onchanged } },
-                "Security" => rsx! { firemage_webui_view_security::Security { vm: vm.clone(), onchanged } },
+                "Configuration" => rsx! { firemage_webui_view_vm_transfer::Configuration { vm: vm.clone(), onchanged } },
+                "Isolation" => rsx! { firemage_webui_view_security::Security { vm: vm.clone(), onchanged } },
                 "Attachments" => rsx! { attachments::Attachments { vm: vm.clone(), onedit: edit } },
                 "Boot" => rsx! { firemage_webui_view_boot::Boot { vm: vm.clone(), onchanged } },
                 "Environment" => rsx! { firemage_webui_view_environment::Environment { vm: vm.clone(), onchanged } },

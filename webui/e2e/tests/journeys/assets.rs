@@ -13,9 +13,27 @@ pub async fn assets(h: &Harness) -> Result<()> {
     h.absent(By::Css("[role='dialog']")).await?;
     h.navigate("Assets").await?;
     h.text("No assets yet").await?;
+    let refresh = h
+        .element(By::Css("button[aria-label='Refresh assets']"))
+        .await?;
+    anyhow::ensure!(
+        refresh.text().await?.is_empty(),
+        "asset refresh is not icon-only"
+    );
     h.absent(By::Id("asset-upload-section")).await?;
     h.button("+ Add asset").await?;
     h.element(By::Id("asset-upload-section")).await?;
+    h.element(By::Css("button[aria-label='About Asset alias']"))
+        .await?
+        .click()
+        .await?;
+    h.text("Renaming preserves existing attachments.").await?;
+    h.element(By::Css(
+        "[role='dialog'][aria-label='Asset alias'] button[aria-label='Close dialog']",
+    ))
+    .await?
+    .click()
+    .await?;
     h.fill("asset-alias", "discarded-draft").await?;
     h.modal_button("Cancel").await?;
     h.absent(By::Css("[role='dialog']")).await?;
@@ -70,6 +88,18 @@ pub async fn assets(h: &Harness) -> Result<()> {
     h.element(By::Id("asset-search")).await?;
     h.button("+ Add asset").await?;
     h.radio("asset-source", "Remote URL").await?;
+    h.element(By::Css("button[aria-label='About Asset HTTPS URL']"))
+        .await?
+        .click()
+        .await?;
+    h.text("The server downloads this public HTTPS URL once")
+        .await?;
+    h.element(By::Css(
+        "[role='dialog'][aria-label='Asset HTTPS URL'] button[aria-label='Close dialog']",
+    ))
+    .await?
+    .click()
+    .await?;
     h.fill("asset-alias", "remote-config").await?;
     h.fill("asset-import-url", "https://127.0.0.1/config.json")
         .await?;
@@ -144,6 +174,8 @@ pub async fn assets(h: &Harness) -> Result<()> {
     let vm_id = vm["id"].as_str().context("VM ID")?.to_owned();
     h.navigate("Assets").await?;
     h.row_button("review-config", "Edit alias").await?;
+    h.element(By::Css("button[aria-label='About Asset alias']"))
+        .await?;
     h.fill("asset-edit-alias", "worker-config").await?;
     h.modal_button("Save alias").await?;
     h.absent(By::Css("[role='dialog']")).await?;

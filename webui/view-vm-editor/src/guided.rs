@@ -66,7 +66,7 @@ pub fn Guided(
                 }
                 Section { id: "boot", title: "Boot inputs", summary: format!("{} inline files{}", count("files"), if (fields.userdata)().is_empty() { "" } else { " · Userdata configured" }),
                     Field { label: "Boot arguments", id: "vm-boot-args", value: fields.boot_args }
-                    Editor { label: "Userdata", id: "vm-userdata", value: fields.userdata, rows: 6 }
+                    ShellEditor { label: "Userdata", id: "vm-userdata", value: fields.userdata, rows: 6 }
                     button { r#type: "button", onclick: move |_| onconfigure.call("boot".into()), "Configure boot inputs" }
                 }
                 Section { id: "security", title: "Security limits", summary: (fields.isolation)(),

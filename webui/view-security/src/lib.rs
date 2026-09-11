@@ -14,16 +14,20 @@ pub fn Security(vm: Value, onchanged: EventHandler<()>) -> Element {
     let auth = use_auth();
     let mut editing = use_signal(|| false);
     let mode = model::mode(&vm["spec"]);
-    let can_edit = matches!(vm["state"].as_str(), Some("defined" | "stopped" | "failed"));
     let limits = model::LimitsDraft::from_spec(&vm["spec"]);
     let memory_ceiling = vm["spec"]["memory_mib"].as_u64().unwrap_or(256)
         + limits.0[0].parse::<u64>().unwrap_or(256);
     rsx! {
+        div { class: "heading compact vm-tab-heading",
         h3 { "Host isolation"
             Info { title: "VM security boundaries",
                 p { "The isolation mode controls the Firecracker process on the host. A jailed VM uses a private filesystem, non-root host identity, seccomp, and cgroup limits. Guest root does not grant host root." }
                 p { "Network access, proxy destinations, guest credentials, and boot file permissions are configured separately. Firemage copies boot assets and never mounts a host directory into the guest." }
                 p { "The mode is fixed when the VM is created. Create a new VM to change it. Trusted and external modes require explicit server operator opt-in." }
+            }
+        }
+            if auth.is_admin() && mode == "jailed" {
+                button { onclick: move |_| editing.set(true), Icon { name: "edit", size: 16 } "Edit limits" }
             }
         }
         dl { class: "key-values",
@@ -44,10 +48,6 @@ pub fn Security(vm: Value, onchanged: EventHandler<()>) -> Element {
             p { class: "small muted", "Firecracker runs with the service's host permissions. Jailer isolation and managed host limits are not applied." }
         } else if mode == "external" {
             p { class: "small muted", "The external process owner is responsible for host isolation, limits, and lifecycle. Firemage cannot verify or apply those protections." }
-        }
-        if auth.is_admin() && mode == "jailed" {
-            button { class: "primary egress-section", disabled: !can_edit, onclick: move |_| editing.set(true), "Configure host limits" }
-            p { class: "small muted", "Stop the VM before changing host limits. Mode changes require a new VM." }
         }
         if editing() {
             editor::LimitsEditor { vm: vm.clone(), onclose: move |_| editing.set(false), onsaved: move |_| { editing.set(false); onchanged.call(()); } }

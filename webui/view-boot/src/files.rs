@@ -1,5 +1,6 @@
 use base64::Engine;
 use dioxus::prelude::*;
+use firemage_webui_component_controls::Icon;
 use serde_json::{Value, json};
 
 #[component]
@@ -31,14 +32,20 @@ pub fn FileFields(
                         });
                     } }
                 }
-                button { r#type: "button", class: "danger subtle", "aria-label": "Remove boot file {index + 1}", onclick: move |_| { files.write().remove(index); }, "Remove" }
             }
             FileField { files, index, name: "path", label: "Seed file name" }
-            FileField { files, index, name: "destination", label: "Absolute guest destination (optional)" }
+            div { class: "field",
+                div { class: "destination-field-label",
+                    label { r#for: "boot-{index}-destination", "Destination in VM (optional)" }
+                    button { r#type: "button", class: "icon-button danger subtle", title: "Remove boot file", "aria-label": "Remove boot file {index + 1}", onclick: move |_| { files.write().remove(index); }, Icon { name: "close" } }
+                }
+                input { id: "boot-{index}-destination", value: file["destination"].as_str().unwrap_or_default(), placeholder: "/etc/app/config.json",
+                    oninput: move |event| files.write()[index]["destination"] = json!(event.value()) }
+            }
             p { class: "small muted", "Leave destination empty to keep the file on the seed disk." }
-            div { class: "form-grid",
-                FileField { files, index, name: "uid", label: "Owner UID", kind: "number" }
-                FileField { files, index, name: "gid", label: "Group GID", kind: "number" }
+            div { class: "file-ownership-fields",
+                FileField { files, index, name: "uid", label: "UID", kind: "number" }
+                FileField { files, index, name: "gid", label: "GID", kind: "number" }
                 FileField { files, index, name: "_mode", label: "Permissions (octal)" }
             }
             div { class: "radio-group",

@@ -6,13 +6,12 @@ pub async fn fetch(
     input: &KernelImport,
 ) -> anyhow::Result<tempfile::NamedTempFile> {
     firemage_wire::ensure_kernel_name(&input.name)?;
-    anyhow::ensure!(
-        input.sha256.len() == 64 && input.sha256.bytes().all(|b| b.is_ascii_hexdigit()),
-        "kernel download requires a SHA-256 digest"
-    );
     Ok(catalog
         .directory()
-        .download(&input.url, Some(&input.sha256))
+        .download(
+            &input.url,
+            (!input.sha256.is_empty()).then_some(input.sha256.as_str()),
+        )
         .await?
         .file)
 }

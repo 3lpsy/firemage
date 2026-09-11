@@ -15,11 +15,11 @@ pub enum Command {
         #[arg(long)]
         alias: String,
     },
-    /// Download a kernel on the server and verify its SHA-256. Requires an administrator.
+    /// Download a kernel on the server with optional SHA-256 verification. Requires an administrator.
     Download {
         name: String,
         url: String,
-        #[arg(long)]
+        #[arg(long, default_value = "")]
         sha256: String,
         #[arg(long)]
         alias: String,
@@ -66,7 +66,8 @@ pub async fn run(command: Command, client: &firemage_client::Client) -> anyhow::
             }
             .validate()?;
             anyhow::ensure!(
-                sha256.len() == 64 && sha256.bytes().all(|byte| byte.is_ascii_hexdigit()),
+                sha256.is_empty()
+                    || (sha256.len() == 64 && sha256.bytes().all(|byte| byte.is_ascii_hexdigit())),
                 "SHA-256 must contain 64 hexadecimal characters"
             );
             crate::print(

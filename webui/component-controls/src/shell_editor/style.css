@@ -1,0 +1,8 @@
+.shell-editor{position:relative;min-width:0;background:#0c0a11;border-radius:7px}
+.shell-editor .shell-editor-input,.shell-editor .shell-editor-paint{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.8;letter-spacing:normal;tab-size:2;padding:11px 12px;white-space:pre;word-break:normal;overflow-wrap:normal}
+.shell-editor .shell-editor-paint{position:absolute;inset:0;max-height:none;margin:0;border:1px solid transparent;background:transparent;overflow:hidden;pointer-events:none;color:#d8c4ed}
+.shell-editor-paint code{display:block;font:inherit;white-space:inherit}
+.shell-editor .shell-editor-input{position:relative;background:transparent;color:transparent;caret-color:var(--text);-webkit-text-fill-color:transparent}
+.shell-editor-input::selection{background:var(--purple-soft);color:var(--text);-webkit-text-fill-color:var(--text)}
+.shell-editor-paint .shell-comment{color:#8d8796}.shell-editor-paint .shell-string{color:#a9d69e}.shell-editor-paint .shell-variable{color:#d9ba7e}.shell-editor-paint .shell-keyword{color:#bd9af3}.shell-editor-paint .shell-operator{color:#9cc9e8}
+@media(forced-colors:active){.shell-editor .shell-editor-paint{display:none}.shell-editor .shell-editor-input{color:CanvasText;-webkit-text-fill-color:CanvasText}}

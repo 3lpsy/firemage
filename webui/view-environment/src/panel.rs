@@ -24,7 +24,7 @@ fn Panel(vm: Value, onchanged: EventHandler<()>) -> Element {
     let mut error = use_signal(String::new);
     let can_edit = matches!(vm["state"].as_str(), Some("defined" | "stopped" | "failed"));
     rsx! {
-        div { class: "heading compact",
+        div { class: "heading compact vm-tab-heading",
             h3 { "Guest environment"
                 Info { title: "Environment and sensitive values",
                     p { "Plain values are visible in the VM configuration. Sensitive entries refer to a named secret, which Firemage resolves when preparing the guest. The guest receives the actual value and can read it." }

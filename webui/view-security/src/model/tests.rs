@@ -23,3 +23,17 @@ fn limits_reject_zero_negative_fractional_and_overflow_values() {
         assert!(draft.apply(&json!({})).is_err());
     }
 }
+
+#[test]
+fn existing_limits_require_a_stopped_vm_but_creation_drafts_are_editable() {
+    for state in [
+        "defined", "stopped", "failed", "ready", "running", "paused", "unknown",
+    ] {
+        let vm = json!({"state":state});
+        assert_eq!(
+            super::is_editable(&vm, false),
+            matches!(state, "defined" | "stopped" | "failed")
+        );
+    }
+    assert!(super::is_editable(&json!({}), true));
+}

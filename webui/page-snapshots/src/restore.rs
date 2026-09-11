@@ -18,7 +18,7 @@ pub fn Restore(
             None => crate::model::vms().await,
         }
     }));
-    let mut target_name = use_signal(String::new);
+    let target = use_signal(String::new);
     let mut acknowledged = use_signal(|| false);
     let mut busy = use_signal(|| false);
     let mut error = use_signal(String::new);
@@ -40,7 +40,7 @@ pub fn Restore(
     } else {
         choices
             .iter()
-            .find(|vm| crate::model::vm_choice(vm) == target_name())
+            .find(|vm| text(vm, "id") == target())
             .cloned()
     };
     let list_id = format!("snapshot-targets-{}", text(&snapshot, "id"));
@@ -51,12 +51,7 @@ pub fn Restore(
             h3 { "Restore to VM" }
             if let Some(Err(message)) = rows.read().as_ref() { Notice { message: message.clone() } }
             if !fixed {
-                label { class: "field", span { "Target VM" }
-                    input { list: list_id.clone(), value: r#"{target_name}"#, placeholder: "Search compatible VMs", disabled: busy(), oninput: move |event| target_name.set(event.value()) }
-                }
-                datalist { id: list_id,
-                    for vm in &choices { option { value: crate::model::vm_choice(vm), r#"{text(vm, "state")} · {text(vm, "owner_id")}"# } }
-                }
+                crate::vm_picker::VmPicker { id: list_id, rows: choices.clone(), selected: target, disabled: busy() }
             }
             if !trusted {
                 label { class: "snapshot-trust switch-row",

@@ -14,7 +14,7 @@ pub fn Boot(vm: Value, onchanged: EventHandler<()>) -> Element {
     let mut editing = use_signal(|| false);
     let can_edit = matches!(vm["state"].as_str(), Some("defined" | "stopped" | "failed"));
     rsx! {
-        div { class: "heading compact",
+        div { class: "heading compact vm-tab-heading",
             h3 { "Boot files and userdata"
                 Info { title: "Guest initialization",
                     p { "Boot files are copied into the guest at their configured destinations with numeric owner, group, and Unix permissions. These are copies, never host filesystem shares." }

@@ -1,4 +1,4 @@
-Host isolation view in the VM inspector's Security tab.
+Host isolation view in the VM inspector's Isolation tab.
 
 - Shows jailed, trusted, or externally managed host process ownership separately from guest privileges.
 - Provides the guided creation mode selector and edits jailed process limits while preserving the full VM spec.

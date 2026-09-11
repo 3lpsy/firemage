@@ -8,7 +8,7 @@ use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
 
 #[component]
-pub fn Configuration(vm: Value, onedit: EventHandler<()>, onchanged: EventHandler<()>) -> Element {
+pub fn Configuration(vm: Value, onchanged: EventHandler<()>) -> Element {
     let auth = use_auth();
     let mut importing = use_signal(|| false);
     let id = text(&vm, "id");
@@ -30,13 +30,12 @@ pub fn Configuration(vm: Value, onedit: EventHandler<()>, onchanged: EventHandle
             h3 { "Configuration" }
             div { class: "actions wrap",
                 if auth.is_admin() {
-                    button { disabled: !editable, onclick: move |_| onedit.call(()), "Configure VM" }
-                    button { disabled: !editable, onclick: move |_| importing.set(true), "Import config" }
+                    button { disabled: !editable, onclick: move |_| importing.set(true), Icon { name: "import", size: 16 } "Import" }
                 }
                 if let Some(toml) = &toml {
-                    a { class: "button", href: format!("data:application/toml;charset=utf-8,{}", encode(toml)), download: "vm-config.toml", "Export config" }
+                    a { class: "button", href: format!("data:application/toml;charset=utf-8,{}", encode(toml)), download: "vm-config.toml", Icon { name: "export", size: 16 } "Export" }
                 }
-                button { onclick: move |_| exported.restart(), "Refresh export" }
+                button { class: "icon-button", "aria-label": "Refresh export", title: "Refresh export", onclick: move |_| exported.restart(), Icon { name: "refresh", size: 16 } }
             }
         }
         match exported.read().as_ref() {

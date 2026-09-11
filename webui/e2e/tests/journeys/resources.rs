@@ -137,7 +137,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     h.element(By::Css(".vm-full-page")).await?;
     super::security::limits(h).await?;
     h.button("Overview").await?;
-    h.button("Configure VM").await?;
+    h.button("Configure").await?;
     h.button("Full TOML").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;
     let fields = spec.as_table_mut().context("VM TOML must be a table")?;
@@ -157,7 +157,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     );
     let vm_id = vms[0]["id"].as_str().context("VM id")?;
     super::serial::serial(h, vm_id, "sidebar-terminal").await?;
-    h.element(By::Css(format!("a[href='#vms/{vm_id}']")))
+    h.element(By::Css(".vm-detail a[aria-label='Open full page']"))
         .await?
         .click()
         .await?;

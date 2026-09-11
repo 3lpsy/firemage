@@ -97,7 +97,7 @@ fn use_path(prefix: &'static str) -> Signal<String> {
 
 pub fn navigate_vm(id: &str) {
     if let Some(window) = web_sys::window() {
-        let _ = window.location().set_hash(&format!("vms/{id}"));
+        let _ = window.location().set_hash(&format!("vms/{id}/overview"));
     }
 }
 
@@ -105,5 +105,13 @@ pub fn navigate_vm_editor(id: Option<&str>) {
     if let Some(window) = web_sys::window() {
         let path = id.map_or_else(|| "vms/new".into(), |id| format!("vms/{id}/edit"));
         let _ = window.location().set_hash(&path);
+    }
+}
+
+pub fn navigate_vm_tab(id: &str, tab: crate::VmTab) {
+    if let Some(window) = web_sys::window() {
+        let _ = window
+            .location()
+            .set_hash(&format!("vms/{id}/{}", tab.slug()));
     }
 }

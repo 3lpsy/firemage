@@ -50,7 +50,7 @@ pub async fn registry(h: &Harness) -> Result<()> {
     );
     h.navigate("Virtual machines").await?;
     h.vm_details("private-image").await?;
-    h.button("Configure VM").await?;
+    h.button("Configure").await?;
     h.button("Full TOML").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;
     spec.as_table_mut()

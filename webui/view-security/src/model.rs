@@ -73,3 +73,7 @@ impl LimitsDraft {
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) fn is_editable(vm: &Value, is_draft: bool) -> bool {
+    is_draft || matches!(vm["state"].as_str(), Some("defined" | "stopped" | "failed"))
+}

@@ -62,7 +62,10 @@ pub async fn catalog_switching(h: &Harness) -> Result<()> {
             .is_empty(),
         "failed policy request retained upstream content"
     );
-    h.button("Refresh egress").await?;
+    h.element(By::Css("button[aria-label='Refresh egress']"))
+        .await?
+        .click()
+        .await?;
     pending(h, "/v1/egress/policies").await?;
     release(h, "/v1/egress/policies", Value::Null, 200).await?;
     h.element(By::XPath("//table//a[normalize-space(.)='shared-review']"))

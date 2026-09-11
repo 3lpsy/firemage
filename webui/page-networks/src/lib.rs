@@ -25,7 +25,6 @@ pub fn Networks() -> Element {
             div {
                 div { class: "eyebrow", "CONNECTIVITY" }
                 h1 { "Networks" }
-                p { class: "muted", "Explicit access policies for every guest." }
             }
             if auth.is_admin() {
                 button {
@@ -42,7 +41,7 @@ pub fn Networks() -> Element {
                 Icon { name: "networks" }
             }
             p {
-                "Offline is a first-class configuration. VMs have no interface until you attach a network."
+                "VMs have no interface until you attach a network."
             }
             Info { title: "Network policies",
                 "Firemage only routes guest requests through that VM’s HTTP proxy rules and TCP tunnels. Isolated blocks traffic through the host. Specific host IP permits one host IP address. Unrestricted enables routed access. A VM with no network attachment has no network device."

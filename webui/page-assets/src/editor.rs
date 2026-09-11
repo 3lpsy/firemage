@@ -31,13 +31,24 @@ pub fn AliasEditor(
                 });
             },
                 Notice { message: error() }
-                Field { label: "Alias", id: "asset-edit-alias", value: alias, required: true, disabled: busy() }
-                p { class: "small muted", "Alias must be unique in your library. Existing VM attachments stay unchanged." }
+                AliasField { id: "asset-edit-alias", value: alias, disabled: busy() }
                 div { class: "actions end",
                     button { r#type: "button", disabled: busy(), onclick: move |_| onclose.call(()), "Cancel" }
                     button { r#type: "submit", class: "primary", disabled: busy(), if busy() { "Saving…" } else { "Save alias" } }
                 }
             }
+        }
+    }
+}
+
+#[component]
+pub fn AliasField(id: String, mut value: Signal<String>, disabled: bool) -> Element {
+    rsx! {
+        div { class: "field",
+            div { class: "secret-field-label", label { r#for: id.clone(), "Alias" }
+                Info { title: "Asset alias", "Unique name in your asset library, used in VM configurations. Renaming preserves existing attachments." }
+            }
+            input { id, value: value(), required: true, maxlength: 128, disabled, placeholder: "app-config", oninput: move |event| value.set(event.value()) }
         }
     }
 }

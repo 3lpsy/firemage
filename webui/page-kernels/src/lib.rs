@@ -28,7 +28,7 @@ pub fn Kernels() -> Element {
                 }
             }
             div { class: "actions",
-                button { onclick: move |_| rows.restart(), "Refresh kernels" }
+                button { class: "icon-button", title: "Refresh kernels", "aria-label": "Refresh kernels", onclick: move |_| rows.restart(), Icon { name: "refresh", size: 16 } }
                 if auth.is_admin() {
                     button { class: "primary", onclick: move |_| adding.set(true), "+ Add kernel" }
                 }

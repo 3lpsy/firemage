@@ -42,7 +42,7 @@ pub fn Egress(vm: Value, onchanged: EventHandler<()>) -> Element {
     let live = matches!(text(&vm, "state").as_str(), "running" | "paused");
     rsx! {
         div { class: "heading compact vm-tab-heading", h3 { "Egress" }
-            button { onclick: move |_| refresh += 1, "Refresh egress" }
+            button { class: "icon-button", title: "Refresh egress", "aria-label": "Refresh egress", onclick: move |_| refresh += 1, Icon { name: "refresh", size: 16 } }
         }
         Notice { message: error() } Notice { message: success(), success: true }
         if auth.is_admin() && restricted {

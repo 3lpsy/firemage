@@ -87,3 +87,26 @@ async fn imports_reject_unverified_and_private_destinations_before_publishing() 
     }
     assert!(catalog.list().unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn optional_checksum_still_enforces_https_and_validates_supplied_hashes() {
+    let root = tempfile::tempdir().unwrap();
+    let catalog = Catalog::open(root.path()).unwrap();
+    let mut request: firemage_wire::KernelImport = serde_json::from_value(serde_json::json!({
+        "name":"vmlinux", "alias":"Linux", "url":"http://example.com/kernel"
+    }))
+    .unwrap();
+    assert!(request.sha256.is_empty());
+    let error = super::fetch(&catalog, &request)
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("HTTPS"), "{error}");
+    request.sha256 = "invalid".into();
+    let error = super::fetch(&catalog, &request)
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("SHA-256"), "{error}");
+    assert!(catalog.list().unwrap().is_empty());
+}

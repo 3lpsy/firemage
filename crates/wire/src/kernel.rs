@@ -15,6 +15,7 @@ pub struct KernelImport {
     pub name: String,
     pub alias: String,
     pub url: String,
+    #[serde(default)]
     pub sha256: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]

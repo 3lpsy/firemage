@@ -21,10 +21,10 @@ pub fn AddAsset(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Element
         .map(crate::size_label)
         .unwrap_or_else(|| "Loading…".into());
     let mut source = use_signal(|| "upload");
-    let mut alias = use_signal(String::new);
+    let alias = use_signal(String::new);
     let mut filename = use_signal(String::new);
     let remote_filename = use_signal(String::new);
-    let url = use_signal(String::new);
+    let mut url = use_signal(String::new);
     let sha = use_signal(String::new);
     let mut bytes = use_signal(|| None::<std::rc::Rc<Vec<u8>>>);
     let mut reading = use_signal(|| false);
@@ -95,15 +95,17 @@ pub fn AddAsset(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Element
                             } }
                         }
                     } else {
-                        Field { label: "Asset HTTPS URL", id: "asset-import-url", value: url, required: true, disabled: busy(), placeholder: "https://example.com/config.toml" }
+                        div { class: "field",
+                            div { class: "secret-field-label", label { r#for: "asset-import-url", "Asset HTTPS URL" }
+                                Info { title: "Asset HTTPS URL", "The server downloads this public HTTPS URL once and saves the file in your asset library. Add a SHA-256 checksum to verify its contents." }
+                            }
+                            input { id: "asset-import-url", value: url(), required: true, disabled: busy(), placeholder: "https://example.com/config.toml", oninput: move |event| url.set(event.value()) }
+                        }
                         Field { label: "Filename", id: "asset-import-filename", value: remote_filename, required: true, disabled: busy(), placeholder: "config.toml" }
                         Field { label: "SHA-256 (optional)", id: "asset-import-sha", value: sha, disabled: busy() }
-                        p { class: "small muted", "The server downloads the file from a public HTTPS URL. Add a SHA-256 checksum to verify its contents." }
                     }
-                    label { class: "field", r#for: "asset-alias", span { "Alias" }
-                        input { id: "asset-alias", value: "{alias}", required: true, maxlength: 128, disabled: busy() || reading(), placeholder: "app-config", oninput: move |event| alias.set(event.value()) }
-                    }
-                    p { class: "small muted", "Alias must be unique in your library. Maximum file size: {limit_label}." }
+                    crate::editor::AliasField { id: "asset-alias", value: alias, disabled: busy() || reading() }
+                    p { class: "small muted", "Maximum file size: {limit_label}." }
                 }
                 div { class: "actions end",
                     button { r#type: "button", disabled: busy() || reading(), onclick: move |_| onclose.call(()), "Cancel" }

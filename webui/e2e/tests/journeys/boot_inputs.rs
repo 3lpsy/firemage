@@ -25,6 +25,8 @@ pub async fn boot_inputs(h: &Harness) -> Result<()> {
     h.fill("boot-1-path", "binary.dat").await?;
     h.fill("boot-1-destination", "/var/lib/runner/binary.dat")
         .await?;
+    super::userdata::ownership(h).await?;
+    super::userdata::editor(h, "boot-userdata").await?;
     h.fill(
         "boot-userdata",
         "#!/bin/sh\nprintf '%s' \"$REGION\" > /tmp/region\n",

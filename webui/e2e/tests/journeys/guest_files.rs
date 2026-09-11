@@ -74,6 +74,20 @@ pub async fn navigate(h: &Harness) -> Result<()> {
         reads(h).await? == vec![2, 10, 20],
         "breadcrumb navigation discarded the directory cache"
     );
+    let refresh = h
+        .element(By::Css("button[aria-label='Refresh files']"))
+        .await?;
+    anyhow::ensure!(
+        refresh.text().await?.trim().is_empty(),
+        "Files refresh is not icon-only"
+    );
+    refresh.click().await?;
+    h.element(By::Css(".guest-file-table .guest-folder-link"))
+        .await?;
+    anyhow::ensure!(
+        reads(h).await? == vec![2, 10, 20, 2],
+        "refresh did not reload the current guest directory"
+    );
     h.driver
         .execute(
             "window.fetch = window.__guestFiles.original; delete window.__guestFiles",

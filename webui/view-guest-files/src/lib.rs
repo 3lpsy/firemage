@@ -3,7 +3,7 @@ mod table;
 mod tree;
 
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Notice;
+use firemage_webui_component_controls::{Icon, Notice};
 use serde_json::Value;
 use state::{BrowserState, Crumb, load, visible_name};
 
@@ -49,17 +49,18 @@ fn Browser(id: String) -> Element {
     rsx! {
         style { {include_str!("style.css")} }
         div { class: "guest-files",
-            div { class: "heading compact",
+            div { class: "heading compact vm-tab-heading",
                 h3 { "Files" }
                 div { class: "actions",
                     button { class: "guest-tree-toggle", onclick: move |_| tree_open.toggle(), "Directories" }
                     button {
+                        class: "icon-button", title: "Refresh files", "aria-label": "Refresh files",
                         disabled: loading,
                         onclick: move |_| {
                             state.write().directories.remove(&inode);
                             state.write().errors.remove(&inode);
                             spawn(load(refresh_id.clone(), inode, state));
-                        }, "Refresh"
+                        }, Icon { name: "refresh" }
                     }
                 }
             }

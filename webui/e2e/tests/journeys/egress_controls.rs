@@ -60,9 +60,9 @@ pub async fn catalog_details(h: &Harness, alias: &str) -> Result<()> {
             == Some("true"),
         "egress chevron lost expanded state"
     );
-    h.element(By::XPath(format!("//table[contains(@class,'egress-catalog-table')]//tr[.//a[normalize-space()='{alias}']]/td[2]"))).await?.click().await?;
+    h.click(By::XPath(format!("//table[contains(@class,'egress-catalog-table')]//tr[.//a[normalize-space()='{alias}']]/td[2]"))).await?;
     h.absent(By::Css(".egress-catalog-drawer")).await?;
-    h.element(By::LinkText(alias)).await?.click().await?;
+    h.click(By::LinkText(alias)).await?;
     h.element(By::Css(".egress-catalog-drawer")).await?;
     Ok(())
 }

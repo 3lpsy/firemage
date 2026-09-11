@@ -14,7 +14,7 @@ pub fn Attachments(vm: Value, onedit: EventHandler<()>) -> Element {
     }));
     rsx! {
         section { class: "vm-attached-files",
-            div { class: "heading compact", h3 { "Attachments" }
+            div { class: "heading compact vm-tab-heading", h3 { "Attachments" }
                 if auth.is_admin() { button { disabled: !matches!(state.as_str(), "defined" | "stopped" | "failed"), onclick: move |_| onedit.call(()), "Edit attachments" } }
             }
             p { class: "small muted", "Configured files are installed on boot. Secret contents stay hidden. Stop the VM to change attachments." }

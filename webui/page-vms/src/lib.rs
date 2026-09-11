@@ -8,17 +8,16 @@ use firemage_webui_view_vm_detail::VmDetail;
 #[component]
 pub fn Vms() -> Element {
     let vm_id = firemage_webui_routes::use_vm_id();
-    let target = vm_id();
-    if target == "new" {
-        return rsx! { page::CreateVmPage {} };
+    match firemage_webui_routes::parse_vm_path(&vm_id()) {
+        firemage_webui_routes::VmPath::Create => rsx! { page::CreateVmPage {} },
+        firemage_webui_routes::VmPath::Edit(id) => {
+            rsx! { for id in [id] { page::EditVmPage { key: "{id}", id: id.clone() } } }
+        }
+        firemage_webui_routes::VmPath::Detail { id, tab } => {
+            rsx! { for id in [id] { page::VmPage { key: "{id}", id: id.clone(), tab } } }
+        }
+        firemage_webui_routes::VmPath::Inventory => rsx! { Inventory {} },
     }
-    if let Some(id) = target.strip_suffix("/edit") {
-        return rsx! { for id in [id] { page::EditVmPage { key: "{id}", id: id.to_owned() } } };
-    }
-    if !target.is_empty() {
-        return rsx! { for id in [target] { page::VmPage { key: "{id}", id: id.clone() } } };
-    }
-    rsx! { Inventory {} }
 }
 
 #[component]
@@ -64,10 +63,9 @@ fn Inventory() -> Element {
             div {
                 div { class: "eyebrow", "COMPUTE" }
                 h1 { "Virtual machines" }
-                p { class: "muted", "Define, inspect, and control your microVMs." }
             }
             if auth.is_admin() {
-                div { class: "actions", button { onclick: move |_| importing.set(true), "Import" } button { class: "primary", onclick: move |_| firemage_webui_routes::navigate_vm_editor(None), "+ Create VM" } }
+                div { class: "actions", button { onclick: move |_| importing.set(true), Icon { name: "import", size: 16 } "Import" } button { class: "primary", onclick: move |_| firemage_webui_routes::navigate_vm_editor(None), "+ Create VM" } }
             }
         }
         div { class: "metrics",
@@ -153,7 +151,7 @@ fn Inventory() -> Element {
                                     td {
                                         a {
                                             class: "table-link",
-                                            href: format!("#vms/{}", text(vm, "id")),
+                                            href: format!("#vms/{}/overview", text(vm, "id")),
                                             onclick: move |event| event.stop_propagation(),
                                             r#"{vm["spec"]["name"].as_str().unwrap_or_default()}"#
                                         }
@@ -168,7 +166,7 @@ fn Inventory() -> Element {
                                         r#"{vm["spec"]["vcpus"]} / {vm["spec"]["memory_mib"]} MiB"#
                                     }
                                     td { class: "vm-row-chevron",
-                                        a { class: "icon-button vm-open-page", href: format!("#vms/{}", text(vm, "id")), title: "Open full page", "aria-label": format!("Open {} full page", text(&vm["spec"], "name")), onclick: move |event| event.stop_propagation(),
+                                        a { class: "icon-button vm-open-page", href: format!("#vms/{}/overview", text(vm, "id")), title: "Open full page", "aria-label": format!("Open {} full page", text(&vm["spec"], "name")), onclick: move |event| event.stop_propagation(),
                                             Icon { name: "external", size: 16 }
                                         }
                                         button { class: "icon-button", r#type: "button",

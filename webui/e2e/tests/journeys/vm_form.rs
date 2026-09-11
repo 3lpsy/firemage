@@ -103,6 +103,7 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
         "console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda rw",
     )
     .await?;
+    super::userdata::editor(h, "vm-userdata").await?;
     h.fill("vm-userdata", "echo setup").await?;
     h.button("Configure boot inputs").await?;
     h.button("+ Add boot file").await?;
@@ -176,7 +177,7 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
         "suggested MAC changed on save"
     );
     anyhow::ensure!(
-        h.driver.current_url().await?.fragment() == Some(&format!("vms/{id}")),
+        h.driver.current_url().await?.fragment() == Some(&format!("vms/{id}/overview")),
         "save did not navigate to VM detail"
     );
     let network_id = spec["network"]["network"]

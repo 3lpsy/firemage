@@ -27,7 +27,7 @@ pub fn Assets() -> Element {
                 h1 { "Assets" }
             }
             div { class: "actions",
-                button { onclick: move |_| rows.restart(), "Refresh assets" }
+                button { class: "icon-button", title: "Refresh assets", "aria-label": "Refresh assets", onclick: move |_| rows.restart(), Icon { name: "refresh", size: 16 } }
                 if auth.is_admin() {
                     button { class: "primary", onclick: move |_| adding.set(true), "+ Add asset" }
                 }

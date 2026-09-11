@@ -20,6 +20,18 @@ fn aliases_are_required_for_catalog_mutations() {
     ] {
         assert!(crate::args::Cli::try_parse_from(arguments).is_err());
     }
+    assert!(
+        crate::args::Cli::try_parse_from([
+            "firemage",
+            "kernel",
+            "download",
+            "vmlinux",
+            "https://example.com/kernel",
+            "--alias",
+            "stable"
+        ])
+        .is_ok()
+    );
     let parsed =
         crate::args::Cli::try_parse_from(["firemage", "kernel", "alias", "vmlinux", "stable"])
             .unwrap();

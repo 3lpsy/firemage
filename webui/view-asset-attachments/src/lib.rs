@@ -3,7 +3,7 @@ mod form;
 mod picker;
 mod secret;
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Notice;
+use firemage_webui_component_controls::{Icon, Notice};
 use firemage_webui_provider_api::get;
 use firemage_wire::FileAsset;
 pub use form::{AttachmentForm, attachments, from_spec, secret_attachments};
@@ -18,7 +18,7 @@ pub fn Attachments(mut value: Signal<Vec<AttachmentForm>>) -> Element {
         section { class: "vm-attachments",
             div { class: "heading compact",
                 h3 { "VM assets" }
-                button { r#type: "button", onclick: move |_| rows.restart(), "Refresh assets" }
+                button { r#type: "button", class: "icon-button", title: "Refresh assets", "aria-label": "Refresh assets", onclick: move |_| rows.restart(), Icon { name: "refresh", size: 16 } }
             }
             match rows.read().as_ref() {
                 Some(Err(message)) => rsx! { Notice { message: message.clone() } },
@@ -41,13 +41,16 @@ pub fn Attachments(mut value: Signal<Vec<AttachmentForm>>) -> Element {
                         }
                         if value.read()[index].secret.is_some() { secret::SecretPicker { value, index } }
                         else { picker::AssetPicker { value, index, rows: rows.read().as_ref().and_then(|r| r.as_ref().ok()).cloned().unwrap_or_default() } }
-                        label { class: "field", r#for: "asset-destination-{index}", span { "Destination in VM" }
+                        div { class: "field",
+                            div { class: "destination-field-label",
+                                label { r#for: "asset-destination-{index}", "Destination in VM" }
+                                button { r#type: "button", class: "icon-button danger subtle", title: "Remove asset", "aria-label": "Remove asset {index + 1}", onclick: move |_| { value.write().remove(index); }, Icon { name: "close" } }
+                            }
                             input { id: "asset-destination-{index}", required: true, placeholder: "/etc/app/config.json", value: "{value.read()[index].destination}", oninput: move |e| value.write()[index].destination = e.value() }
                         }
-                        button { r#type: "button", class: "danger subtle", "aria-label": "Remove asset {index + 1}", onclick: move |_| { value.write().remove(index); }, "Remove" }
                     }
                     details { summary { "File ownership and permissions" }
-                        div { class: "form-grid",
+                        div { class: "file-ownership-fields",
                             label { class: "field", r#for: "asset-uid-{index}", span { "UID" } input { id: "asset-uid-{index}", r#type: "number", min: "0", required: true, value: "{value.read()[index].uid}", oninput: move |e| value.write()[index].uid = e.value() } }
                             label { class: "field", r#for: "asset-gid-{index}", span { "GID" } input { id: "asset-gid-{index}", r#type: "number", min: "0", required: true, value: "{value.read()[index].gid}", oninput: move |e| value.write()[index].gid = e.value() } }
                             label { class: "field", r#for: "asset-mode-{index}", span { "Permissions (octal)" } input { id: "asset-mode-{index}", required: true, value: "{value.read()[index].mode}", oninput: move |e| value.write()[index].mode = e.value() } }

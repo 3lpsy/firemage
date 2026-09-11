@@ -68,8 +68,9 @@ fn Inventory(proxies: bool, selected: String) -> Element {
                     h1 { "Egress" }
                 }
                 div { class: "actions",
-                    button { onclick: move |_| { rows.restart(); refresh += 1; }, "Refresh egress" }
+                    button { class: "icon-button", title: "Refresh egress", "aria-label": "Refresh egress", onclick: move |_| { rows.restart(); refresh += 1; }, Icon { name: "refresh", size: 16 } }
                     if auth.is_admin() { button { class: "primary", onclick: move |_| if proxies { editing.set(Some(Value::Null)); } else { navigate("policies/new"); },
+                        Icon { name: "plus", size: 16 }
                         if proxies { "Create upstream proxy" } else { "Create policy" }
                     } }
                 }

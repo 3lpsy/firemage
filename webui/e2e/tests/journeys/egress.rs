@@ -171,10 +171,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
         "duplicate did not reuse the shared policy"
     );
     h.navigate("Egress").await?;
-    h.element(By::LinkText("shared-review"))
-        .await?
-        .click()
-        .await?;
+    h.click(By::LinkText("shared-review")).await?;
     super::egress_controls::catalog_details(h, "shared-review").await?;
     h.text("Used by 2 VMs").await?;
     let disabled = h
@@ -187,10 +184,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
     );
     h.text("proxy-runner").await?;
     h.button("Upstream proxies").await?;
-    h.element(By::LinkText("shared-exit"))
-        .await?
-        .click()
-        .await?;
+    h.click(By::LinkText("shared-exit")).await?;
     super::egress_controls::catalog_details(h, "shared-exit").await?;
     h.text("Used by 1 policies").await?;
     let disabled = h
@@ -202,10 +196,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
         "referenced proxy can be deleted"
     );
     h.button("Egress policies").await?;
-    h.element(By::LinkText("shared-review"))
-        .await?
-        .click()
-        .await?;
+    h.click(By::LinkText("shared-review")).await?;
     h.button("Edit policy").await?;
     anyhow::ensure!(
         h.value("policy-upstream").await? == proxy_id,
@@ -239,10 +230,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
         "AWS signing was not saved"
     );
     h.button("Upstream proxies").await?;
-    h.element(By::LinkText("shared-exit"))
-        .await?
-        .click()
-        .await?;
+    h.click(By::LinkText("shared-exit")).await?;
     h.button("Edit proxy").await?;
     h.fill("proxy-url", "socks5://proxy.example.com:1080")
         .await?;

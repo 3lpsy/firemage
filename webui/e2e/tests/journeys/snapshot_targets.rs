@@ -107,7 +107,7 @@ pub async fn inventory(h: &Harness, vm_id: &str, other_vm: &str, original_id: &s
     }
     db.close().await?;
     h.navigate("Virtual machines").await?;
-    h.element(By::Css(format!("a[href='#vms/{vm_id}']")))
+    h.element(By::Css(format!("a[href='#vms/{vm_id}/overview']")))
         .await?
         .click()
         .await?;
@@ -154,10 +154,15 @@ pub async fn inventory(h: &Harness, vm_id: &str, other_vm: &str, original_id: &s
             .is_some_and(|href| href.ends_with(&format!("#snapshots/{saved_id}"))),
         "selected snapshot alias lost its permalink"
     );
-    h.element(By::Css(".snapshot-restore input[list]"))
+    h.element(By::Css(".snapshot-vm-picker .kernel-trigger"))
         .await?
-        .send_keys(format!("snapshot-target ({vm_id})"))
+        .click()
         .await?;
+    let search = h
+        .element(By::Css(".snapshot-vm-picker input[role='combobox']"))
+        .await?;
+    search.send_keys(vm_id).await?;
+    search.send_keys(Key::Down + Key::Enter).await?;
     let trust = h
         .element(By::Css(".snapshot-restore input[type='checkbox']"))
         .await?;
@@ -178,12 +183,11 @@ pub async fn inventory(h: &Harness, vm_id: &str, other_vm: &str, original_id: &s
         "switching snapshots retained trust acknowledgement"
     );
     anyhow::ensure!(
-        h.element(By::Css(".snapshot-restore input[list]"))
+        h.element(By::Css(".snapshot-vm-picker .kernel-trigger"))
             .await?
-            .prop("value")
+            .text()
             .await?
-            .as_deref()
-            == Some(""),
+            == "Choose a compatible VM",
         "switching snapshots retained the previous restore target"
     );
     h.element(By::LinkText("saved-from-this-vm"))
@@ -234,7 +238,10 @@ pub async fn inventory(h: &Harness, vm_id: &str, other_vm: &str, original_id: &s
             .error_for_status()?;
     }
     h.navigate("Snapshots").await?;
-    h.button("Refresh snapshots").await?;
+    h.element(By::Css("button[aria-label='Refresh snapshots']"))
+        .await?
+        .click()
+        .await?;
     h.element(By::LinkText("imported-checkpoint"))
         .await?
         .click()

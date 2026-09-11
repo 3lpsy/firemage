@@ -10,7 +10,7 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
     let mut source = use_signal(|| "upload".to_owned());
     let mut name = use_signal(String::new);
     let alias = use_signal(String::new);
-    let url = use_signal(String::new);
+    let mut url = use_signal(String::new);
     let sha = use_signal(String::new);
     let mut bytes = use_signal(|| None::<Vec<u8>>);
     let mut reading = use_signal(|| false);
@@ -59,12 +59,17 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
                             } }
                         }
                     } else {
-                        Field { label: "Kernel HTTPS URL", id: "kernel-url", value: url, required: true, disabled: busy(), placeholder: "https://example.com/vmlinux" }
-                        Field { label: "SHA-256", id: "kernel-sha", value: sha, required: true, disabled: busy() }
+                        div { class: "field",
+                            div { class: "secret-field-label", label { r#for: "kernel-url", "Kernel HTTPS URL" }
+                                Info { title: "Kernel HTTPS URL", "The server downloads this public HTTPS URL once and stores the kernel in its library. Future VM starts use the saved file." }
+                            }
+                            input { id: "kernel-url", value: url(), required: true, disabled: busy(), placeholder: "https://example.com/vmlinux", oninput: move |event| url.set(event.value()) }
+                        }
+                        Field { label: "SHA-256 (optional)", id: "kernel-sha", value: sha, disabled: busy(), placeholder: "Optional checksum to verify the download" }
                     }
                     Field { label: "Filename in kernel directory", id: "kernel-name", value: name, required: true, disabled: busy() || reading(), placeholder: "vmlinux-6.1" }
-                    Field { label: "Alias", id: "kernel-add-alias", value: alias, required: true, disabled: busy() || reading(), placeholder: "linux-6.1" }
-                    p { class: "small muted", "Existing files are never overwritten. Maximum size: 128 MiB." }
+                    AliasField { id: "kernel-add-alias", value: alias, disabled: busy() || reading(), placeholder: "linux-6.1" }
+                    p { class: "small muted", "Maximum size: 128 MiB." }
                 }
                 div { class: "actions end",
                     button { r#type: "button", disabled: busy() || reading(), onclick: move |_| onclose.call(()), "Cancel" }
@@ -95,13 +100,29 @@ pub fn AliasEditor(kernel: Value, onclose: EventHandler<()>, onsaved: EventHandl
                 });
             },
                 Notice { message: error() }
-                Field { label: "Alias", id: "kernel-alias", value: alias, required: true, disabled: busy(), placeholder: "Recommended" }
-                p { class: "small muted", "A unique display name for this kernel. Existing VM selections stay unchanged." }
+                AliasField { id: "kernel-alias", value: alias, disabled: busy(), placeholder: "Recommended" }
                 div { class: "actions end",
                     button { r#type: "button", disabled: busy(), onclick: move |_| onclose.call(()), "Cancel" }
                     button { r#type: "submit", class: "primary", disabled: busy(), "Save alias" }
                 }
             }
+        }
+    }
+}
+
+#[component]
+fn AliasField(
+    id: String,
+    mut value: Signal<String>,
+    disabled: bool,
+    placeholder: String,
+) -> Element {
+    rsx! {
+        div { class: "field",
+            div { class: "secret-field-label", label { r#for: id.clone(), "Alias" }
+                Info { title: "Kernel alias", "Unique kernel name used in VM configurations. Renaming preserves existing VM selections." }
+            }
+            input { id, value: value(), required: true, maxlength: 128, disabled, placeholder, oninput: move |event| value.set(event.value()) }
         }
     }
 }

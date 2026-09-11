@@ -3,7 +3,7 @@ use firemage_webui_e2e::Harness;
 use thirtyfour::prelude::*;
 
 pub async fn limits(h: &Harness) -> Result<()> {
-    h.button("Security").await?;
+    h.button("Isolation").await?;
     h.text("Jailed").await?;
     h.element(By::Css("button[aria-label='About VM security boundaries']"))
         .await?
@@ -14,7 +14,9 @@ pub async fn limits(h: &Harness) -> Result<()> {
         .await?
         .click()
         .await?;
-    h.button("Configure host limits").await?;
+    h.button("Edit limits").await?;
+    h.element(By::Css("button[aria-label='About Host CPU quota']"))
+        .await?;
     h.fill("security-memory_overhead_mib", "384").await?;
     h.fill("security-pids_max", "96").await?;
     h.fill("security-cpu_percent", "150").await?;
@@ -38,7 +40,7 @@ pub async fn limits(h: &Harness) -> Result<()> {
             && vms[0]["spec"]["userdata"] == "hello from the browser",
         "security editor changed guest permissions or boot inputs"
     );
-    h.button("Configure host limits").await?;
+    h.button("Edit limits").await?;
     h.fill("security-cpu_percent", "").await?;
     h.fill("security-file_size_mib", "").await?;
     h.modal_button("Save host limits").await?;

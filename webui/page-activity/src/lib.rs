@@ -16,7 +16,7 @@ pub fn Activity() -> Element {
                 h1 { "Activity" }
                 p { class: "muted", "Recent operations recorded by this server." }
             }
-            button { onclick: move |_| refresh += 1, "Refresh" }
+            button { class: "icon-button", title: "Refresh activity", "aria-label": "Refresh activity", onclick: move |_| refresh += 1, Icon { name: "refresh", size: 16 } }
         }
         match rows.read().as_ref() {
             Some(Ok(value)) => rsx! {

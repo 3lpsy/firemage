@@ -21,11 +21,23 @@ impl Harness {
         }
     }
     pub async fn button(&self, label: &str) -> Result<()> {
-        self.element(By::XPath(format!("//button[normalize-space(.)='{label}']")))
-            .await?
-            .click()
-            .await?;
-        Ok(())
+        self.click(By::XPath(format!("//button[normalize-space(.)='{label}']")))
+            .await
+    }
+    // A render can replace a node after lookup; retry only clicks rejected as stale.
+    pub async fn click(&self, by: By) -> Result<()> {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+        loop {
+            match self.element(by.clone()).await?.click().await {
+                Ok(()) => return Ok(()),
+                Err(error)
+                    if matches!(
+                        error.as_inner(),
+                        thirtyfour::error::WebDriverErrorInner::StaleElementReference(_)
+                    ) && tokio::time::Instant::now() < deadline => {}
+                Err(error) => return Err(error).with_context(|| format!("click target: {by:?}")),
+            }
+        }
     }
     pub async fn vm_details(&self, name: &str) -> Result<()> {
         self.element(By::Css(format!(

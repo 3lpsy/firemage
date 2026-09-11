@@ -14,6 +14,7 @@ mod egress;
 mod egress_controls;
 mod egress_loading;
 mod environment;
+mod userdata;
 pub use egress::*;
 
 mod registry;

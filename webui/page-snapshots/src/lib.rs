@@ -6,9 +6,10 @@ mod requirements;
 mod restore;
 mod save;
 mod upload;
+mod vm_picker;
 pub use controls::VmSnapshots;
 use dioxus::prelude::*;
-use firemage_webui_component_controls::{Empty, Notice};
+use firemage_webui_component_controls::{Empty, Icon, Notice};
 use firemage_webui_provider_api::text;
 use firemage_webui_provider_auth::use_auth;
 
@@ -29,9 +30,9 @@ pub fn Snapshots() -> Element {
                     h1 { "Snapshots" }
                 }
                 div { class: "actions",
-                    button { onclick: move |_| rows.restart(), "Refresh snapshots" }
+                    button { class: "icon-button", title: "Refresh snapshots", "aria-label": "Refresh snapshots", onclick: move |_| rows.restart(), Icon { name: "refresh", size: 16 } }
                     if auth.is_admin() {
-                        button { onclick: move |_| uploading.set(true), "Upload snapshot" }
+                        button { title: "Upload snapshot", "aria-label": "Upload snapshot", onclick: move |_| uploading.set(true), Icon { name: "upload", size: 16 } "Upload" }
                         button { class: "primary", onclick: move |_| saving.set(true), "Save VM snapshot" }
                     }
                 }
@@ -50,7 +51,6 @@ pub fn Snapshots() -> Element {
                                 if snapshots.is_empty() { Empty { title: "No snapshots yet", description: "Save a paused VM or upload a snapshot bundle." } }
                                 else {
                                     inventory::Inventory { snapshots: filtered, selected: selected() }
-                                    p { class: "muted small", "Snapshots remain available after their source VM is deleted." }
                                 }
                             }
                             for snapshot in detail.clone() {
