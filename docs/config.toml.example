@@ -9,6 +9,8 @@ public_url = "http://127.0.0.1:8080"
 # Persistent host storage. The database defaults to firemage.db inside data_dir.
 data_dir = "/var/lib/firemage"
 kernel_dir = "/var/lib/firemage/kernels"
+# Optional static guest helper override; the embedded helper is used by default.
+# firemage_guest_bin_path = "/usr/local/libexec/firemage-guest"
 asset_dir = "/var/lib/firemage/files"
 snapshot_dir = "/var/lib/firemage/snapshots"
 # Maximum file asset size in bytes, default 1 GiB. Restart after changing.

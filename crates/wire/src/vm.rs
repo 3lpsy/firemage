@@ -47,6 +47,8 @@ pub struct VmSpec {
     #[serde(default)]
     pub terminal: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_terminal: Option<crate::WebTerminal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workload: Option<crate::Workload>,
     pub kernel: Option<Asset>,
     pub rootfs: Option<Asset>,
@@ -115,6 +117,10 @@ impl VmSpec {
             !self.terminal || self.socket.is_none(),
             "terminal input requires a managed VM"
         );
+        if let Some(terminal) = &self.web_terminal {
+            anyhow::ensure!(self.socket.is_none(), "web terminal requires a managed VM");
+            terminal.validate()?;
+        }
         crate::validate_environment(&self.environment)?;
         if let Some(workload) = &self.workload {
             workload.validate()?;

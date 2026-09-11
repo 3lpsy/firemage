@@ -10,3 +10,4 @@ VM lifecycle, assets, seed inputs, and managed guest networking.
 - Kernel catalog references use stable filenames; aliases are display labels. Catalog changes and VM references share a lifecycle lock.
 
 - Guest file browsing requires a stopped VM and holds its lifecycle lock while reading the root disk; downloads use private temporary files.
+- Optional Web Terminal injects the embedded static helper into the seed and manages a private vsock device; `firemage_guest_bin_path` overrides the payload.

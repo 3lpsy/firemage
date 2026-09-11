@@ -20,6 +20,9 @@ check:
 build:
     bash ci/build/cargo.sh build --workspace
 
+guest-build:
+    bash ci/build/guest.sh
+
 release: ui-build
     FIREMAGE_WEBUI_EMBED_DIR="$PWD/dist/webui" bash ci/build/cargo.sh build --locked --release -p firemage
 
@@ -96,6 +99,7 @@ docker-run *args:
 test-docker:
     python3 ci/tests/test-docker.py
     python3 ci/tests/test-cargo-config.py
+    python3 ci/tests/test-guest-build.py
 
 # Forgejo guest entrypoints. CI creates an empty .env and supplies variables.
 ci-sync-workdir:
@@ -122,6 +126,7 @@ ci-runs workflow="ci-task.yml" job="":
 
 # Validate CI argument handling without allocating a guest.
 test-ci:
+    python3 ci/tests/test-sccache.py
     bash ci/tests/test-private-ci.sh
 
 test-mirror:

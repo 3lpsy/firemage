@@ -22,11 +22,12 @@ pub fn EgressCatalog() -> Element {
         .strip_prefix("policies/")
         .and_then(|s| s.strip_suffix("/edit"))
     {
-        return rsx! { EditPage { key: "{id}", id: id.to_owned() } };
+        return rsx! { for id in [id] { EditPage { key: "{id}", id: id.to_owned() } } };
     }
     let proxies = path.starts_with("proxies");
     let selected = path.split('/').nth(1).unwrap_or_default().to_owned();
-    rsx! { Inventory { key: "{proxies}", proxies, selected } }
+    // Dioxus applies keys to iterator children, so changing catalogs drops pending requests and local state.
+    rsx! { for proxies in [proxies] { Inventory { key: "{proxies}", proxies, selected: selected.clone() } } }
 }
 
 #[component]
@@ -105,8 +106,8 @@ fn Inventory(proxies: bool, selected: String) -> Element {
                         None => rsx! { p { "Loading egress…" } },
                     }
                 }
-                if !selected.is_empty() {
-                    Drawer { key: "{kind}-{selected}-{refresh}", kind, id: selected.clone(),
+                for id in [selected.clone()].into_iter().filter(|id| !id.is_empty()) {
+                    Drawer { key: "{kind}-{id}-{refresh}", kind, id,
                         onclose: move |_| navigate(kind),
                         onedit: move |value: Value| if proxies { editing.set(Some(value)); } else { navigate(&format!("policies/{}/edit",text(&value,"id"))); },
                         onchanged: move |_| { rows.restart(); refresh += 1; },

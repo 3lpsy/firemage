@@ -68,6 +68,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     );
     h.fill("vm-name", "offline-harness").await?;
     h.select_kernel("vmlinux").await?;
+    h.radio("asset-source", "Local Disk").await?;
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
     h.fill("vm-cpus", "2").await?;
     h.fill("vm-memory", "512").await?;
@@ -152,6 +153,11 @@ pub async fn resources(h: &Harness) -> Result<()> {
     h.element(By::Css(".vm-detail [role='alert']")).await?;
     h.screenshot("start-error").await?;
     h.button("Delete VM").await?;
+    let snapshots = h
+        .element(By::Css("[role='dialog'] input[type='checkbox']"))
+        .await?;
+    super::switches::keyboard_toggle(&snapshots).await?;
+    h.screenshot("delete-vm-snapshots-switch").await?;
     h.modal_button("Delete VM").await?;
     h.text("No virtual machines yet").await?;
     anyhow::ensure!(

@@ -37,7 +37,7 @@ pub async fn navigate(h: &Harness) -> Result<()> {
     .click()
     .await?;
     h.element(By::XPath(
-        "//table[contains(@class,'guest-file-table')]//button[normalize-space()='nested']",
+        "//table[contains(@class,'guest-file-table')]//a[contains(@class,'guest-folder-link')][normalize-space()='nested']",
     ))
     .await?
     .click()
@@ -63,7 +63,7 @@ pub async fn navigate(h: &Harness) -> Result<()> {
         "symlinks or oversized files had download links"
     );
     h.screenshot("guest-files-tree").await?;
-    h.element(By::Css(".guest-file-breadcrumbs button"))
+    h.element(By::Css(".guest-file-breadcrumbs a"))
         .await?
         .click()
         .await?;

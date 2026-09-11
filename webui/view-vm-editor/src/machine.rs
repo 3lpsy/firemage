@@ -12,6 +12,7 @@ pub fn Machine(fields: Fields, existing: bool) -> Element {
         isolation,
         socket,
         mut terminal,
+        mut web_terminal,
         ..
     } = fields;
     rsx! {
@@ -24,7 +25,7 @@ pub fn Machine(fields: Fields, existing: bool) -> Element {
             div { class: "radio-group",
                 for (value, label) in [("managed", "Managed by Firemage"), ("socket", "Bring your own socket")] {
                     label { input { r#type: "radio", name: "runtime-mode", value, checked: mode() == value,
-                        onchange: move |_| { mode.set(value.into()); if value == "socket" { terminal.set(false); } } } "{label}" }
+                        onchange: move |_| { mode.set(value.into()); if value == "socket" { terminal.set(false); web_terminal.set(false); } } } "{label}" }
                 }
             }
         }

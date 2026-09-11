@@ -10,3 +10,4 @@ Shared full-page Create and Edit VM form with collapsible sections and a section
 - The server validates ownership, policy and prepared disk constraints before saving.
 
 - Egress selects a shared policy. Creating one opens a full page while the VM draft remains mounted.
+- New VMs default to OCI. Terminal separates raw serial input from optional Web Terminal and its shell argv.

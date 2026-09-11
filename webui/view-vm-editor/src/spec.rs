@@ -12,6 +12,8 @@ pub struct Form {
     pub workload_mode: String,
     pub command: String,
     pub terminal: bool,
+    pub web_terminal: bool,
+    pub shell_command: String,
     pub metadata: String,
     pub registry: crate::registry::RegistryForm,
     pub vcpus: String,
@@ -56,6 +58,24 @@ impl Form {
         }
         spec["security"] = json!({"mode": isolation});
         spec["terminal"] = json!(self.terminal);
+        if self.web_terminal {
+            if self.mode == "socket" {
+                return Err("Web Terminal requires a managed VM.".into());
+            }
+            let command = if self.shell_command.trim().is_empty() {
+                json!(["/bin/sh", "-i"])
+            } else {
+                parse_json(&self.shell_command, "Shell command", is_draft)?
+            };
+            if !is_draft {
+                let terminal: firemage_wire::WebTerminal =
+                    serde_json::from_value(json!({"command":command})).map_err(|_| {
+                        "Shell command must be a JSON array of arguments.".to_owned()
+                    })?;
+                terminal.validate().map_err(|error| error.to_string())?;
+            }
+            spec["web_terminal"] = json!({"command":command});
+        }
         if !self.metadata.trim().is_empty() {
             spec["metadata"] = parse_json(&self.metadata, "Metadata", is_draft)?;
         }
@@ -173,6 +193,7 @@ pub fn merge_guided(base: &Value, generated: Value) -> Value {
         "security",
         "workload",
         "terminal",
+        "web_terminal",
         "metadata",
     ] {
         let Some(next) = generated.get(key) else {

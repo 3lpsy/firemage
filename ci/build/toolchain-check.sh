@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+test -f "$(cc -print-file-name=libc.a)"
 cargo --version
 cargo fmt --version
 cargo clippy --version
 cargo chef --version
 cargo nextest --version
+sccache --version
 just --version
 python3 --version
 node --version

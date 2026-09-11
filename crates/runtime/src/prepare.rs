@@ -74,6 +74,9 @@ impl Runtime {
                 .await?;
             fc.call("PUT",&format!("/drives/{}",drive.id),json!({"drive_id":drive.id,"path_on_host":disk,"is_root_device":false,"is_read_only":drive.read_only})).await?;
         }
+        if spec.web_terminal.is_some() {
+            fc.call("PUT", "/vsock", json!({"guest_cid":crate::web_shell::SHELL_CID,"uds_path":self.shell_device_path(row, &spec)})).await?;
+        }
         if let Some((net, tap)) = network {
             fc.call(
                 "PUT",

@@ -69,6 +69,12 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         .await?
         .send_keys(archive.to_string_lossy().as_ref())
         .await?;
+    let trust = h
+        .element(By::Css("[role='dialog'] input[type='checkbox']"))
+        .await?;
+    super::switches::keyboard_toggle(&trust).await?;
+    h.screenshot("upload-trust-switch").await?;
+    super::switches::keyboard_toggle(&trust).await?;
     h.modal_button("Upload snapshot").await?;
     h.absent(By::Css("[role='dialog']")).await?;
     h.text("imported-checkpoint").await?;
@@ -109,10 +115,10 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         !restore.is_enabled().await?,
         "untrusted snapshot restore enabled before acknowledgement"
     );
-    h.element(By::Css(".snapshot-restore input[type='checkbox']"))
-        .await?
-        .click()
+    let trust = h
+        .element(By::Css(".snapshot-restore input[type='checkbox']"))
         .await?;
+    super::switches::keyboard_toggle(&trust).await?;
     anyhow::ensure!(
         !restore.is_enabled().await?,
         "restore accepted an ambiguous VM name"

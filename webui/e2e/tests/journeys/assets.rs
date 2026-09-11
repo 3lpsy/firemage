@@ -58,6 +58,7 @@ pub async fn assets(h: &Harness) -> Result<()> {
     h.button("+ Create VM").await?;
     h.fill("vm-name", "asset-review").await?;
     h.select_kernel("vmlinux").await?;
+    h.radio("asset-source", "Local Disk").await?;
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
     h.button("+ Attach asset").await?;
     h.element(By::Id("vm-asset-0")).await?.click().await?;

@@ -24,3 +24,9 @@ just docker-release
 Builds reuse `target/podman` and copy the binary to `dist/firemage`. Release builds embed the web UI. Public source snapshots omit private deployment workflows and their checks.
 
 **Security Warning**: This application has not undergone a third party security review. It is not recommended to deploy the server on adversarial or public networks.
+
+The host embeds the static `firemage-guest` helper for optional Web Terminal
+sessions. Release downloads also provide the helper for custom guest images.
+Native builds need static libc development libraries, such as `glibc-static`
+on Fedora. `just` builds the helper before the host; for direct Cargo commands,
+run `just guest-build` and export its output as `FIREMAGE_GUEST_BIN_PATH`.

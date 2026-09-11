@@ -97,3 +97,30 @@ async fn prepared_legacy_disk_allows_image_job_but_rejects_unsupported_overrides
         b"existing guest disk"
     );
 }
+
+#[test]
+fn web_terminal_uses_existing_managed_setup_without_replacing_disks() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = crate::Runtime::new(
+        firemage_queries::DatabaseConnection::Disconnected,
+        firemage_config::Server {
+            data_dir: Some(dir.path().into()),
+            ..Default::default()
+        },
+    );
+    let mut spec: firemage_wire::VmSpec = serde_json::from_value(serde_json::json!({"name":"shell","rootfs":{"kind":"oci","image":"example:test"},"web_terminal":{}})).unwrap();
+    assert!(runtime.ensure_web_terminal_init("vm", &spec).is_ok());
+    let directory = runtime.directory("vm");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(directory.join("rootfs.ext4"), b"existing").unwrap();
+    assert!(runtime.ensure_web_terminal_init("vm", &spec).is_err());
+    spec.web_terminal = None;
+    assert!(runtime.ensure_web_terminal_init("vm", &spec).is_ok());
+    spec.web_terminal = Some(Default::default());
+    std::fs::write(directory.join("oci-init-version"), b"1\n").unwrap();
+    assert!(runtime.ensure_web_terminal_init("vm", &spec).is_ok());
+    assert_eq!(
+        std::fs::read(directory.join("rootfs.ext4")).unwrap(),
+        b"existing"
+    );
+}

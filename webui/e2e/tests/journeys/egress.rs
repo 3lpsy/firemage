@@ -40,6 +40,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
     h.button("+ Create VM").await?;
     h.fill("vm-name", "proxy-runner").await?;
     h.select_kernel("kernel").await?;
+    h.radio("asset-source", "Local Disk").await?;
     h.fill("vm-rootfs", &h.asset("root.ext4")).await?;
     h.fill("vm-memory", "").await?;
     h.button("Network").await?;
@@ -59,6 +60,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
         .click()
         .await?;
     h.button("OpenAI preset").await?;
+    super::egress_controls::folded_http_switch(h).await?;
     h.element(By::Css(".egress-credentials summary"))
         .await?
         .click()
@@ -85,6 +87,16 @@ pub async fn egress(h: &Harness) -> Result<()> {
         .await?;
     h.modal_button("Create proxy").await?;
     h.absent(By::Css("[role='dialog']")).await?;
+    let upstream = h.element(By::Id("policy-upstream")).await?;
+    anyhow::ensure!(
+        upstream
+            .find(By::Css("option:checked"))
+            .await?
+            .text()
+            .await?
+            == "shared-exit",
+        "newly created proxy remained unavailable in the policy selector"
+    );
     anyhow::ensure!(
         h.value("rule-0-signing-key-secret").await? == "cloud-token",
         "creating a proxy lost signing credentials"
@@ -228,6 +240,7 @@ pub async fn egress(h: &Harness) -> Result<()> {
         "SOCKS5 proxy was not saved"
     );
     h.screenshot("upstream-catalog").await?;
+    super::egress_loading::catalog_switching(h).await?;
     Ok(())
 }
 

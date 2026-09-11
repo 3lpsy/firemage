@@ -10,6 +10,7 @@ impl Runtime {
     ) -> anyhow::Result<()> {
         self.ensure_isolation_policy(spec)?;
         self.ensure_workload_init(&row.id, spec)?;
+        self.ensure_web_terminal_init(&row.id, spec)?;
         let mut resolved = spec.clone();
         let directory = self.directory(&row.id);
         let rootfs_exists = directory.join("rootfs.ext4").exists();
@@ -110,6 +111,7 @@ impl Runtime {
             || !spec.environment.is_empty()
             || spec.network.is_some()
             || spec.workload.is_some()
+            || spec.web_terminal.is_some()
         {
             required.push("seed.ext4".into());
         }

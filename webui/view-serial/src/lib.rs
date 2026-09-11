@@ -2,60 +2,41 @@ mod logs;
 mod terminal;
 
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Notice;
-use firemage_webui_provider_api::request;
-use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
 
 #[component]
-pub fn Serial(vm: Value, onchanged: EventHandler<()>) -> Element {
-    let auth = use_auth();
+pub fn Serial(vm: Value) -> Element {
     let id = vm["id"].as_str().unwrap_or_default().to_owned();
     let enabled = vm["spec"]["terminal"].as_bool().unwrap_or(false);
-    let editable = matches!(vm["state"].as_str(), Some("defined" | "stopped" | "failed"));
     let mut terminal = use_signal(|| false);
-    let mut saving = use_signal(|| false);
-    let mut error = use_signal(String::new);
-    let save_id = id.clone();
+    let tty = terminal() && enabled;
+    let tabs = rsx! {
+        div { class: "tabs serial-tabs",
+            button { class: if !tty { "active" }, onclick: move |_| terminal.set(false), "Serial output" }
+            button { class: if tty { "active" }, disabled: !enabled,
+                title: if enabled { "Guest ttyS0 stream" } else { "Enable guest serial input in VM configuration." },
+                onclick: move |_| terminal.set(true), "TTY Stream"
+            }
+        }
+    };
     rsx! {
-        div { class: "heading compact",
-            div { class: "tabs",
-                button { class: if !terminal() { "active" }, onclick: move |_| terminal.set(false), "Serial output" }
-                button { class: if terminal() { "active" }, disabled: !enabled, onclick: move |_| terminal.set(true), "Terminal" }
+        style { {include_str!("serial.css")} }
+        if tty {
+            for id in [id] {
+                terminal::TerminalPane { key: "terminal-{id}", id, tabs: tabs.clone() }
             }
-            if auth.is_admin() {
-                button {
-                    disabled: !editable || saving(),
-                    onclick: move |_| {
-                        let id = save_id.clone();
-                        let mut spec = vm["spec"].clone();
-                        spec["terminal"] = Value::Bool(!enabled);
-                        saving.set(true);
-                        spawn(async move {
-                            match request("PUT", &format!("/v1/vms/{id}"), Some(spec), &auth.csrf()).await {
-                                Ok(_) => { error.set(String::new()); terminal.set(false); onchanged.call(()); }
-                                Err(value) => error.set(value),
-                            }
-                            saving.set(false);
-                        });
-                    },
-                    if enabled { "Disable terminal" } else { "Enable terminal" }
-                }
-            }
-        }
-        if !editable && auth.is_admin() {
-            p { class: "muted small", "Stop the VM to change terminal access." }
-        }
-        Notice { message: error() }
-        if terminal() && enabled {
-            terminal::TerminalPane { key: "terminal-{id}", id: id.clone() }
         } else {
-            logs::LogOutput { key: "serial-{id}", id, stream: "serial" }
+            for id in [id] {
+                logs::LogOutput { key: "serial-{id}", id, stream: "serial", tabs: Some(tabs.clone()) }
+            }
         }
     }
 }
 
 #[component]
 pub fn FirecrackerLogs(id: String) -> Element {
-    rsx! { logs::LogOutput { key: "firecracker-{id}", id, stream: "firecracker" } }
+    rsx! {
+        style { {include_str!("serial.css")} }
+        for id in [id] { logs::LogOutput { key: "firecracker-{id}", id, stream: "firecracker" } }
+    }
 }

@@ -10,6 +10,8 @@ pub use oidc::*;
 
 mod boot_inputs;
 mod egress;
+mod egress_controls;
+mod egress_loading;
 pub use egress::*;
 
 mod registry;
@@ -22,6 +24,7 @@ mod assets;
 pub use assets::*;
 
 mod serial;
+mod serial_connection;
 
 mod vm_form;
 pub use vm_form::*;
@@ -33,3 +36,6 @@ mod guest_files;
 mod snapshots;
 pub use snapshots::*;
 mod snapshot_targets;
+mod switches;
+
+mod web_shell;

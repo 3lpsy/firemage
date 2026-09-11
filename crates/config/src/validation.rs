@@ -2,6 +2,16 @@ use crate::Server;
 impl Server {
     pub fn validate(&self) -> anyhow::Result<()> {
         self.session_ttl()?;
+        if let Some(path) = &self.firemage_guest_bin_path {
+            anyhow::ensure!(
+                path.is_absolute()
+                    && path.components().all(|part| matches!(
+                        part,
+                        std::path::Component::RootDir | std::path::Component::Normal(_)
+                    )),
+                "firemage_guest_bin_path must be an absolute path without traversal"
+            );
+        }
         anyhow::ensure!(
             self.snapshot_max_bytes() > 0 && self.snapshot_max_bytes() <= 1024 * 1024 * 1024 * 1024,
             "snapshot_max_bytes must be positive and at most 1 TiB"

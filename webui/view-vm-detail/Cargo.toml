@@ -20,3 +20,5 @@ firemage-webui-view-serial = { path = "../view-serial" }
 firemage-webui-view-vm-transfer = { path = "../view-vm-transfer" }
 
 firemage-webui-view-guest-files = { path = "../view-guest-files" }
+
+firemage-webui-view-web-shell = { path = "../view-web-shell" }

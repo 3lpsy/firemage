@@ -38,3 +38,5 @@ mod guest_files;
 mod snapshots;
 
 mod egress_catalog;
+
+mod web_shell;

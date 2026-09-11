@@ -8,6 +8,9 @@ impl Runtime {
         spec: &VmSpec,
     ) -> anyhow::Result<Vec<BootFile>> {
         let mut files = spec.files.clone();
+        if spec.web_terminal.is_some() {
+            files.push(self.guest_binary_file().await?);
+        }
         files.extend(self.attachment_files(owner, spec).await?);
         files.extend(self.secret_attachment_files(owner, spec).await?);
         if let Some(workload) = &spec.workload {

@@ -3,7 +3,7 @@ FROM ${BASE_IMAGE}
 
 USER root
 RUN dnf -y install --setopt=install_weak_deps=False \
-        rust cargo rustfmt clippy just gcc gcc-c++ make pkgconf-pkg-config \
+        rust cargo rustfmt clippy sccache just gcc gcc-c++ glibc-static make pkgconf-pkg-config \
         python3 nodejs jq curl openssl ca-certificates git tar gzip util-linux \
         findutils diffutils shellcheck chromium chromedriver rust-std-static-wasm32-unknown-unknown lld \
     && dnf clean all

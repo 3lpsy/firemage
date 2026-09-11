@@ -29,7 +29,7 @@ pub fn use_fields(initial: &Value) -> Fields {
     let source = use_signal(|| {
         initial["rootfs"]["kind"]
             .as_str()
-            .unwrap_or("local")
+            .unwrap_or("oci")
             .to_owned()
     });
     let rootfs = use_signal(|| {
@@ -57,6 +57,8 @@ pub fn use_fields(initial: &Value) -> Fields {
     });
     let command = use_signal(|| optional_json(&initial["workload"]["command"]));
     let terminal = use_signal(|| initial["terminal"].as_bool().unwrap_or(false));
+    let web_terminal = use_signal(|| initial["web_terminal"].is_object());
+    let shell_command = use_signal(|| optional_json(&initial["web_terminal"]["command"]));
     let metadata = use_signal(|| optional_json(&initial["metadata"]));
     let vcpus = use_signal(|| initial["vcpus"].as_u64().unwrap_or(1).to_string());
     let memory = use_signal(|| initial["memory_mib"].as_u64().unwrap_or(256).to_string());
@@ -90,6 +92,8 @@ pub fn use_fields(initial: &Value) -> Fields {
         workload_mode,
         command,
         terminal,
+        web_terminal,
+        shell_command,
         metadata,
         vcpus,
         memory,
@@ -117,6 +121,8 @@ impl Fields {
             workload_mode: (self.workload_mode)(),
             command: (self.command)(),
             terminal: (self.terminal)(),
+            web_terminal: (self.web_terminal)(),
+            shell_command: (self.shell_command)(),
             metadata: (self.metadata)(),
             vcpus: (self.vcpus)(),
             memory: (self.memory)(),
@@ -148,7 +154,7 @@ impl Fields {
         self.socket.set(text(value, "socket"));
         self.kernel.set(text(&value["kernel"], "name"));
         self.source
-            .set(value["rootfs"]["kind"].as_str().unwrap_or("local").into());
+            .set(value["rootfs"]["kind"].as_str().unwrap_or("oci").into());
         self.rootfs.set(
             value["rootfs"]["path"]
                 .as_str()
@@ -174,6 +180,9 @@ impl Fields {
             .set(optional_json(&value["workload"]["command"]));
         self.terminal
             .set(value["terminal"].as_bool().unwrap_or(false));
+        self.web_terminal.set(value["web_terminal"].is_object());
+        self.shell_command
+            .set(optional_json(&value["web_terminal"]["command"]));
         self.metadata.set(optional_json(&value["metadata"]));
         self.registry.set(registry::RegistryForm::from_value(
             &value["rootfs"]["registry"],

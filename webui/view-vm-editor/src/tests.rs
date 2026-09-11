@@ -14,6 +14,8 @@ fn form() -> Form {
         workload_mode: "one-shot".into(),
         command: String::new(),
         terminal: false,
+        web_terminal: false,
+        shell_command: String::new(),
         metadata: String::new(),
         registry: Default::default(),
         vcpus: "2".into(),
@@ -330,4 +332,28 @@ fn edit_validation_preserves_immutable_runtime_and_isolation() {
     let mut changed = original.clone();
     changed["memory_mib"] = json!(1024);
     super::draft::validate(changed, &original).unwrap();
+}
+
+#[test]
+fn web_terminal_defaults_validates_and_survives_guided_toml() {
+    let mut input = form();
+    input.web_terminal = true;
+    let value = input.spec().unwrap();
+    let restored: Value = toml::from_str(&to_toml(&value).unwrap()).unwrap();
+    assert_eq!(
+        restored["web_terminal"]["command"],
+        json!(["/bin/sh", "-i"])
+    );
+    let disabled = super::spec::merge_guided(&value, form().spec().unwrap());
+    assert!(disabled.get("web_terminal").is_none());
+    for command in ["[]", "[1]", "[\"sh\"]", "invalid"] {
+        let mut input = form();
+        input.web_terminal = true;
+        input.shell_command = command.into();
+        assert!(input.spec().is_err(), "accepted {command}");
+    }
+    let mut external = form();
+    external.mode = "socket".into();
+    external.web_terminal = true;
+    assert!(external.spec().is_err());
 }

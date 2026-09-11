@@ -43,6 +43,7 @@ pub async fn kernels(h: &Harness) -> Result<()> {
         .send_keys(Key::Down + Key::Enter)
         .await?;
     h.element(By::Css("#vm-kernel:focus")).await?;
+    h.radio("asset-source", "Local Disk").await?;
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
     h.button("Create VM").await?;
     h.absent(By::Css(".vm-editor-page")).await?;

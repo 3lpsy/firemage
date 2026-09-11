@@ -18,3 +18,5 @@ firemage-webui-view-egress = { path = "../view-egress" }
 firemage-webui-view-environment = { path = "../view-environment" }
 firemage-webui-view-boot = { path = "../view-boot" }
 web-sys = { workspace = true, features = ["Window", "Document", "Element"] }
+
+firemage-webui-view-web-shell = { path = "../view-web-shell" }

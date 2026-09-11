@@ -62,9 +62,9 @@ pub fn Restore(
                 }
             }
             if !trusted {
-                label { class: "snapshot-trust",
-                    input { r#type: "checkbox", checked: acknowledged(), disabled: busy(), onchange: move |event| acknowledged.set(event.checked()) }
-                    "I trust the source of this snapshot."
+                label { class: "snapshot-trust switch-row",
+                    span { "I trust the source of this snapshot." }
+                    input { class: "toggle-switch", r#type: "checkbox", role: "switch", checked: acknowledged(), disabled: busy(), onchange: move |event| acknowledged.set(event.checked()) }
                 }
             }
             p { class: "muted small", "Restoring replaces the target VM's disks and leaves it paused. The saved source name is informational." }

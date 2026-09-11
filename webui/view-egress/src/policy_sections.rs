@@ -37,11 +37,31 @@ pub fn Index() -> Element {
     } }
 }
 #[component]
-pub fn Http(mut draft: Signal<model::Draft>) -> Element {
+pub fn HttpSection(mut draft: Signal<model::Draft>) -> Element {
+    let enabled = draft.read().http;
+    let rules = draft.read().rules.len();
     rsx! {
-        label { class: "check-row", input { id: "egress-http-enabled", r#type: "checkbox", checked: draft.read().http, onchange: move |event| draft.write().http = event.checked() } "Enable HTTP proxy" }
-        p { class: "small muted", "Every destination is denied until a rule allows it. The VM keeps its existing guest-facing proxy port." }
+        div { class: "egress-http-section",
+            Section { id: "http", title: "HTTP rules", summary: format!("{rules} rules"), open: true,
+                Http { draft }
+            }
+            label { class: "switch-row egress-http-toggle",
+                span { if enabled { "Enabled" } else { "Disabled" } }
+                input {
+                    id: "egress-http-enabled", class: "toggle-switch", r#type: "checkbox", role: "switch",
+                    "aria-label": "Enable HTTP proxy", checked: enabled,
+                    onchange: move |event| draft.write().http = event.checked(),
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn Http(mut draft: Signal<model::Draft>) -> Element {
+    rsx! {
         if draft.read().http {
+            p { class: "small muted", "Every destination is denied until a rule allows it. The VM keeps its existing guest-facing proxy port." }
             div { class: "heading compact", h3 { "Allowed requests"
                 Info { title: "HTTP rules", "Match exact hosts, ports, methods and path prefixes. HTTPS is inspected using the Firemage CA. Empty destination CIDRs allow public IPs only." }
             }
@@ -52,6 +72,8 @@ pub fn Http(mut draft: Signal<model::Draft>) -> Element {
             }
             fields::HttpRules { draft }
             if draft.read().rules.is_empty() { p { class: "small muted", "No HTTP destinations are allowed." } }
+        } else {
+            p { class: "small muted", "HTTP proxy is disabled. Rules stay in this draft." }
         }
     }
 }

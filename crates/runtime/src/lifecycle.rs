@@ -63,7 +63,9 @@ impl Runtime {
                         self.network_tap(&row, net).await?;
                     }
                     let (snapshot_path, memory_path) = self.snapshot_import(&row, &snapshot_path, &memory_path).await?;
-                    fc.call("PUT","/snapshot/load",json!({"snapshot_path":snapshot_path,"mem_backend":{"backend_type":"File","backend_path":memory_path},"resume_vm":false})).await?; Ok("paused")
+                    let mut load = json!({"snapshot_path":snapshot_path,"mem_backend":{"backend_type":"File","backend_path":memory_path},"resume_vm":false});
+                    if spec.web_terminal.is_some() { load["vsock_override"] = json!({"uds_path":self.shell_device_path(&row, &spec)}); }
+                    fc.call("PUT", "/snapshot/load", load).await?; Ok("paused")
                 },
                 VmAction::Metadata { value } => { fc.call("PUT","/mmds",value).await?; Ok(row.state.as_str()) },
                 VmAction::Refresh => unreachable!(),

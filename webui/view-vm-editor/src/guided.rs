@@ -60,14 +60,18 @@ pub fn Guided(
                         button { r#type: "button", onclick: move |_| onconfigure.call("security".into()), "Configure host limits" }
                     } else { p { class: "small muted", "Host limits are managed by Firemage for jailed VMs only." } }
                 }
-                Section { id: "metadata", title: "Metadata", summary: if (fields.metadata)().trim().is_empty() { "Not configured" } else { "Shared policy" },
+                Section { id: "metadata", title: "Metadata", summary: if (fields.metadata)().trim().is_empty() { "Not configured" } else { "Configured" },
                     Editor { label: "Metadata JSON (optional)", id: "vm-metadata", value: fields.metadata, rows: 8 }
                     p { class: "small muted", "MMDS v2 requires a network interface. Leave blank to disable metadata." }
                 }
-                Section { id: "terminal", title: "Terminal", summary: if terminal() { "Enabled" } else { "Disabled" },
-                    label { class: "check-row", input { id: "vm-terminal", r#type: "checkbox", checked: terminal(), disabled: (fields.mode)() == "socket",
-                        onchange: move |event| terminal.set(event.checked()) } "Enable guest serial input" }
+                Section { id: "terminal", title: "Terminal", summary: if (fields.web_terminal)() { "Web Terminal enabled" } else if terminal() { "Serial input enabled" } else { "Disabled" },
+                    label { class: "switch-row",
+                        span { "Enable guest serial input" }
+                        input { id: "vm-terminal", class: "toggle-switch", r#type: "checkbox", role: "switch", checked: terminal(), disabled: (fields.mode)() == "socket",
+                            onchange: move |event| terminal.set(event.checked()) }
+                    }
                     p { class: "small muted", "A managed guest must provide a console on ttyS0." }
+                    firemage_webui_view_web_shell::Settings { enabled: fields.web_terminal, command: fields.shell_command, disabled: (fields.mode)() == "socket" }
                 }
             }
         }

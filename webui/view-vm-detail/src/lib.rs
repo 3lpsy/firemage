@@ -135,7 +135,7 @@ pub fn VmDetail(
                 }
             }
             div { class: "tabs scroll",
-                for label in ["Overview", "Configuration", "Security", "Egress", "Environment", "Attachments", "Boot", "Serial", "Firecracker", "Files", "Snapshots", "Metadata", "Advanced"] {
+                for label in ["Overview", "Configuration", "Security", "Egress", "Environment", "Attachments", "Boot", "Serial", "Web Shell", "Firecracker", "Files", "Snapshots", "Metadata", "Advanced"] {
                     button {
                         class: if tab() == label { "active" } else { "" },
                         onclick: move | _
@@ -192,8 +192,9 @@ pub fn VmDetail(
                     firemage_webui_view_egress::Egress { vm: vm.clone(), onchanged }
                 },
                 "Serial" => rsx! {
-                    firemage_webui_view_serial::Serial { vm: vm.clone(), onchanged }
+                    firemage_webui_view_serial::Serial { vm: vm.clone() }
                 },
+                "Web Shell" => rsx! { firemage_webui_view_web_shell::WebShell { vm: vm.clone(), onchanged } },
                 "Firecracker" => rsx! { firemage_webui_view_serial::FirecrackerLogs { id: id.clone() } },
                 "Files" => rsx! {
                     firemage_webui_view_guest_files::GuestFiles { vm: vm.clone() }
@@ -215,9 +216,9 @@ pub fn VmDetail(
             if confirm() == "delete" {
                 Modal { title: "Delete virtual machine?", onclose: move |_| confirm.set(String::new()),
                     p { "This deletes the VM and its managed disks. Download any output you need first." }
-                    label { class: "checkbox-row",
-                        input { r#type: "checkbox", checked: delete_snapshots(), onchange: move |event| delete_snapshots.set(event.checked()) }
-                        "Also delete snapshots taken from this VM"
+                    label { class: "checkbox-row switch-row",
+                        span { "Also delete snapshots taken from this VM" }
+                        input { class: "toggle-switch", r#type: "checkbox", role: "switch", checked: delete_snapshots(), onchange: move |event| delete_snapshots.set(event.checked()) }
                     }
                     p { class: "small muted", "Snapshots are kept in the snapshot library unless selected above. Shared kernels, file assets and secrets are kept." }
                     div { class: "actions end",

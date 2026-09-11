@@ -121,16 +121,58 @@ input::placeholder,textarea::placeholder {
 input:disabled,textarea:disabled {
   opacity:.6;
 }
-.checkbox-row {
+.switch-row {
   display:flex;
   align-items:center;
-  gap:8px;
-}
-.checkbox-row input[type=checkbox] {
-  width:auto;
-  flex:0 0 auto;
+  justify-content:space-between;
+  gap:16px;
+  min-height:34px;
   margin:0;
+  padding-right:5px;
+  cursor:pointer;
+}
+input.toggle-switch[type=checkbox] {
+  appearance:none;
+  position:relative;
+  display:block;
+  width:38px;
+  height:22px;
+  flex:0 0 38px;
   padding:0;
+  margin:0;
+  border:1px solid var(--muted);
+  border-radius:20px;
+  background:var(--panel,#100c16);
+  cursor:pointer;
+}
+input.toggle-switch::after {
+  content:'';
+  position:absolute;
+  left:3px;
+  top:3px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--text);
+}
+input.toggle-switch:checked {
+  background:var(--purple);
+  border-color:var(--purple);
+}
+input.toggle-switch:checked::after {
+  transform:translateX(16px);
+  background:#170f21;
+}
+input.toggle-switch:focus-visible {
+  outline:2px solid var(--text);
+  outline-offset:3px;
+}
+.switch-row:has(input:disabled) {
+  color:var(--muted);
+  cursor:not-allowed;
+}
+input.toggle-switch:disabled {
+  cursor:not-allowed;
 }
 textarea {
   resize:vertical;

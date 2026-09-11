@@ -15,6 +15,10 @@ pub(super) fn ensure_target(manifest: &SnapshotManifest, target: &VmSpec) -> any
         "snapshot architecture differs from this host"
     );
     let source = &manifest.spec;
+    anyhow::ensure!(
+        source.web_terminal.is_some() == target.web_terminal.is_some(),
+        "snapshot Web Terminal capability differs from target VM"
+    );
     if manifest.files.contains_key("egress-bootstrap")
         || source.egress_policy.is_some()
         || source
@@ -70,7 +74,19 @@ pub(super) async fn ensure_devices(fc: &Firecracker, spec: &VmSpec) -> anyhow::R
 
 pub(super) fn ensure_config(config: &Value, spec: &VmSpec) -> anyhow::Result<()> {
     anyhow::ensure!(config.is_object(), "invalid Firecracker configuration");
-    for field in ["vsock", "balloon", "cpu-config", "memory-hotplug"] {
+    if spec.web_terminal.is_some() {
+        anyhow::ensure!(
+            config["vsock"]["guest_cid"] == crate::web_shell::SHELL_CID
+                && config["vsock"]["uds_path"] == crate::web_shell::JAILED_SHELL_SOCKET,
+            "snapshot vsock differs from managed Web Terminal device"
+        );
+    } else {
+        anyhow::ensure!(
+            config["vsock"].is_null(),
+            "snapshots do not support unmanaged vsock configuration"
+        );
+    }
+    for field in ["balloon", "cpu-config", "memory-hotplug"] {
         anyhow::ensure!(
             config[field].is_null(),
             "snapshots do not support unmanaged {field} configuration"

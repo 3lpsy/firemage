@@ -5,6 +5,9 @@ use std::path::PathBuf;
 #[derive(Debug, Default, Clone, Args, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Server {
+    /// Host-managed override for the guest helper injected during preparation.
+    #[arg(long, env = "FIREMAGE_GUEST_BIN_PATH")]
+    pub firemage_guest_bin_path: Option<PathBuf>,
     #[arg(long, env = "FIREMAGE_SNAPSHOT_DIR")]
     pub snapshot_dir: Option<PathBuf>,
     #[arg(long, env = "FIREMAGE_SNAPSHOT_MAX_BYTES")]
@@ -86,6 +89,9 @@ impl Server {
 
     pub fn merge(self, file: Self) -> Self {
         Self {
+            firemage_guest_bin_path: self
+                .firemage_guest_bin_path
+                .or(file.firemage_guest_bin_path),
             snapshot_dir: self.snapshot_dir.or(file.snapshot_dir),
             snapshot_max_bytes: self.snapshot_max_bytes.or(file.snapshot_max_bytes),
             kernel_dir: self.kernel_dir.or(file.kernel_dir),

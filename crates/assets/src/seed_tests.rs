@@ -114,3 +114,40 @@ async fn staging_accepts_files_above_the_former_32_mib_limit() {
         length as u64
     );
 }
+
+#[tokio::test]
+async fn guest_helper_is_executable_and_started_by_the_existing_setup_hook() {
+    let directory = tempfile::tempdir().unwrap();
+    let staging = directory.path().join("enabled");
+    let helper = BootFile {
+        path: "firemage/firemage-guest".into(),
+        content: "helper".into(),
+        encoding: Default::default(),
+        destination: None,
+        uid: 0,
+        gid: 0,
+        mode: 0o700,
+    };
+    stage(&[helper], None, &staging, 1024).await.unwrap();
+    assert_eq!(
+        std::fs::metadata(staging.join("firemage/firemage-guest"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o700
+    );
+    let setup = std::fs::read_to_string(staging.join("firemage/setup.sh")).unwrap();
+    assert!(setup.contains("mount -t devpts devpts /dev/pts"));
+    assert!(setup.contains("/firemage/input/firemage/firemage-guest </dev/null &"));
+    let disabled = directory.path().join("disabled");
+    stage(&[], Some("echo ready"), &disabled, 1024)
+        .await
+        .unwrap();
+    assert!(!disabled.join("firemage/firemage-guest").exists());
+    assert!(
+        !std::fs::read_to_string(disabled.join("firemage/setup.sh"))
+            .unwrap()
+            .contains("devpts")
+    );
+}

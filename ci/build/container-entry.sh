@@ -32,6 +32,8 @@ if [[ "$recipe" == build || "$recipe" == release || "$recipe" == build-dev || "$
     trap 'rm -f "$temporary"' EXIT
     install -m 0755 "$CARGO_TARGET_DIR/$profile/firemage" "$temporary"
     mv -f "$temporary" /workspace/dist/firemage
+    install -m 0755 "$CARGO_TARGET_DIR/guest-build/${FIREMAGE_GUEST_TARGET:-x86_64-unknown-linux-gnu}/release/firemage-guest" \
+        /workspace/dist/firemage-guest
 else
     exec just "$recipe" "$@"
 fi

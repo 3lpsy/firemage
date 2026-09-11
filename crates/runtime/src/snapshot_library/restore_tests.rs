@@ -261,3 +261,18 @@ async fn restored_network_names_are_owner_scoped_and_preserve_saved_policy() {
     target.network = None;
     assert!(compatibility::ensure_target(&saved, &target).is_err());
 }
+
+#[test]
+fn snapshots_accept_only_the_assigned_web_terminal_device() {
+    let mut manifest = manifest();
+    manifest.spec.web_terminal = Some(Default::default());
+    let mut actual = config(&manifest.spec);
+    actual["vsock"] = json!({"guest_cid":3,"uds_path":"/shell/vsock.sock"});
+    compatibility::ensure_config(&actual, &manifest.spec).unwrap();
+    actual["vsock"]["uds_path"] = json!("/another.sock");
+    assert!(compatibility::ensure_config(&actual, &manifest.spec).is_err());
+    let mut target = manifest.spec.clone();
+    compatibility::ensure_target(&manifest, &target).unwrap();
+    target.web_terminal = None;
+    assert!(compatibility::ensure_target(&manifest, &target).is_err());
+}

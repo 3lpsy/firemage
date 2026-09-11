@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+firemage-guest-bundle = { path = "../guest-bundle" }
+firemage-guest-protocol = { path = "../guest-protocol" }
 base64 = "0.22"
 hex.workspace = true
 firemage-catalog-files = { path = "../catalog-files" }

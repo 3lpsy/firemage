@@ -54,9 +54,9 @@ pub fn Upload(onclose: EventHandler<()>, onsaved: EventHandler<String>) -> Eleme
                 if let Some(maximum) = maximum { p { class: "muted small", "Maximum bundle size: {crate::model::size(maximum)}." } }
                 if let Some(Err(message)) = limits.read().as_ref() { Notice { message: message.clone() } }
                 p { class: "muted small", "Bundles include guest memory and disks, which may contain credentials." }
-                label { class: "snapshot-trust",
-                    input { r#type: "checkbox", checked: trusted(), disabled: busy(), onchange: move |event| trusted.set(event.checked()) }
-                    "I trust the source of this snapshot."
+                label { class: "snapshot-trust switch-row",
+                    span { "I trust the source of this snapshot." }
+                    input { class: "toggle-switch", r#type: "checkbox", role: "switch", checked: trusted(), disabled: busy(), onchange: move |event| trusted.set(event.checked()) }
                 }
                 p { class: "muted small", "You can upload without trusting it. Trust is required before restore." }
                 Notice { message: error() }

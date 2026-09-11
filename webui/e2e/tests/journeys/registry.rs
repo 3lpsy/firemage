@@ -14,7 +14,7 @@ pub async fn registry(h: &Harness) -> Result<()> {
     h.button("+ Create VM").await?;
     h.fill("vm-name", "private-image").await?;
     h.select_kernel("vmlinux").await?;
-    h.radio("asset-source", "OCI image").await?;
+    h.radio("asset-source", "OCI Image").await?;
     h.fill("vm-rootfs", "registry.example.com/jobs/runner:review")
         .await?;
     h.element(By::Css(".vm-form-registry > summary"))

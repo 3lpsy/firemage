@@ -15,6 +15,8 @@ pub struct Fields {
     pub workload_mode: Signal<String>,
     pub command: Signal<String>,
     pub terminal: Signal<bool>,
+    pub web_terminal: Signal<bool>,
+    pub shell_command: Signal<String>,
     pub metadata: Signal<String>,
     pub registry: Signal<crate::registry::RegistryForm>,
     pub vcpus: Signal<String>,

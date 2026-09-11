@@ -114,3 +114,42 @@ defaulting to 64 GiB. File uploads use `asset_max_bytes`, defaulting to 1 GiB.
 Restart after changing these host settings, and match the reverse proxy's upload
 limits. Restore needs temporary space for extraction and the target's previous
 disks until it succeeds.
+
+## Web Shell
+
+Enable **Web Terminal** in the create/edit form's Terminal section. The Web Shell
+view opens a separate interactive guest shell; guest serial input still controls
+ttyS0. Shell access requires an administrator browser session. The default command
+is `["/bin/sh", "-i"]`; configure another absolute guest executable and its arguments
+when needed. Leaving the tab terminates the shell and its processes. Reconnecting
+starts a new shell. The main workload keeps its existing lifecycle; a one-shot VM
+still stops when its main program exits.
+
+Firemage adds its embedded static `firemage-guest` executable to the input disk
+only when enabled. Managed OCI initialization starts it over a private vsock
+connection before userdata. Existing OCI disks with Firemage's generated init
+use the same seed setup without replacing their root disk. The guest kernel must be Linux 5.3 or newer and
+support virtio-vsock and PTYs, and the configured shell must exist in the image.
+
+Custom root disks must mount the seed disk at `/firemage/input`, mount devpts,
+and start `/firemage/input/firemage/firemage-guest` from their init. They may run
+Firemage's seed setup script as part of their normal initialization. Firemage
+does not replace a custom image's init. Releases also provide the static guest
+binary for custom image builds. The optional server setting
+`firemage_guest_bin_path` selects an alternative compatible static executable
+for injection; the embedded helper remains the default.
+
+When Firemage sits behind a reverse proxy, forward WebSocket upgrades on
+`/v1/vms/{id}/shell/ws`. For nginx, add a location such as this alongside your
+existing API route (adjust the upstream to match your deployment):
+
+```nginx
+location ~ ^/v1/vms/[^/]+/shell/ws$ {
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 12h;
+    proxy_pass http://127.0.0.1:8080;
+}
+```

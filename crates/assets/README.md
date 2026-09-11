@@ -9,3 +9,4 @@ Materialize isolated VM disks and prepare guest boot inputs.
 - Jailed output extraction requires Bubblewrap namespaces and seccomp; only the disk, parser and required libraries are visible, all read-only. Output and parser resources are bounded.
 - Anonymous materialization rejects unresolved registry settings; authenticated pulls require resolved options. Registry secrets never enter the guest disk.
 - OCI simple boot requires root USER and `/bin/sh`; BYO init implements the seed protocol for files, environment and userdata. Temporary extraction trees are discarded after success or failure.
+- Optional Web Terminal startup lives in seed setup, so existing managed OCI init can start the helper without changing the root disk.

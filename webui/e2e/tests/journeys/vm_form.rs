@@ -18,7 +18,13 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     h.fill("vm-cpus", "2").await?;
     h.fill("vm-memory", "512").await?;
     h.select_kernel("vmlinux").await?;
-    h.radio("asset-source", "OCI image").await?;
+    anyhow::ensure!(
+        h.element(By::Css("input[name='asset-source'][value='oci']"))
+            .await?
+            .is_selected()
+            .await?,
+        "OCI is not the default image source"
+    );
     h.fill("vm-rootfs", "alpine:3.22").await?;
     h.fill("vm-rootfs-size", "8192").await?;
     h.button("Configure initrd and additional drives").await?;
@@ -115,7 +121,27 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     h.button("Metadata").await?;
     h.fill("vm-metadata", r#"{"job":"review"}"#).await?;
     h.button("Terminal").await?;
-    h.element(By::Id("vm-terminal")).await?.click().await?;
+    let terminal = h.element(By::Id("vm-terminal")).await?;
+    super::switches::keyboard_toggle(&terminal).await?;
+    h.screenshot("guest-serial-input-switch").await?;
+    let shell = h.element(By::Id("vm-web-terminal")).await?;
+    h.element(By::Css("button[aria-label='About Web Terminal']"))
+        .await?
+        .click()
+        .await?;
+    h.text("Custom images must support the guest helper")
+        .await?;
+    h.driver
+        .execute("document.querySelector('.modal-backdrop').click()", vec![])
+        .await?;
+    h.absent(By::Css("[role='dialog']")).await?;
+    anyhow::ensure!(
+        !shell.is_selected().await?,
+        "dismissing Web Terminal info toggled its switch"
+    );
+    super::switches::keyboard_toggle(&shell).await?;
+    h.fill("vm-shell-command", r#"["/bin/sh", "-i"]"#).await?;
+    h.screenshot("web-terminal-settings").await?;
     h.button("Full TOML").await?;
     let draft = h.value("vm-toml").await?;
     anyhow::ensure!(
@@ -187,6 +213,7 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
         updated["spec"] == expected,
         "editing capacity lost another section"
     );
+    super::web_shell::connection(h, id).await?;
     Ok(())
 }
 
@@ -258,6 +285,10 @@ fn check(spec: &Value) -> Result<()> {
         spec["attachments"][0]["destination"] == "/workspace/source.tar"
             && spec["secret_attachments"][0]["mode"] == 384,
         "lost attachments"
+    );
+    anyhow::ensure!(
+        spec["web_terminal"]["command"] == json!(["/bin/sh", "-i"]),
+        "lost web terminal command"
     );
     anyhow::ensure!(spec["egress_policy"].is_string(), "lost egress");
     anyhow::ensure!(

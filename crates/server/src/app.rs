@@ -12,6 +12,7 @@ pub struct App {
     pub runtime: firemage_runtime::Runtime,
     pub management: Arc<firemage_config::ManagedConfig>,
     pub(crate) started: std::time::Instant,
+    pub(crate) shell: crate::web_shell::ShellState,
     pub(crate) browser: crate::browser::BrowserState,
     pub(crate) login_budget: Arc<Mutex<(std::time::Instant, u32)>>,
     pub(crate) dummy_hash: Arc<String>,
@@ -26,6 +27,7 @@ impl App {
             )),
             started: std::time::Instant::now(),
             browser: Default::default(),
+            shell: Default::default(),
             runtime,
             login_budget: Arc::new(Mutex::new((std::time::Instant::now(), 0))),
             dummy_hash: Arc::new(firemage_auth::hash_password(
@@ -152,6 +154,11 @@ pub fn router(app: App) -> Router {
                 .post(crate::terminal::input)
                 .layer(DefaultBodyLimit::max(32 * 1024)),
         )
+        .route(
+            "/v1/vms/{id}/shell/sessions",
+            post(crate::web_shell::create),
+        )
+        .route("/v1/vms/{id}/shell/ws", get(crate::web_shell::connect))
         .route("/v1/vms/{id}/egress", get(crate::egress::status))
         .route("/v1/egress/ca", get(crate::egress::ca))
         .route(

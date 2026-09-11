@@ -20,6 +20,7 @@ impl Runtime {
         );
         let previous: VmSpec = serde_json::from_str(&row.spec)?;
         self.ensure_workload_init(id, &spec)?;
+        self.ensure_web_terminal_init(id, &spec)?;
         anyhow::ensure!(
             previous.socket == spec.socket && previous.security.mode == spec.security.mode,
             "attached socket or isolation mode cannot be changed; define a new VM"

@@ -20,7 +20,7 @@ pub fn Storage(fields: Fields, existing: bool, onconfigure: EventHandler<String>
             crate::kernel::KernelPicker { selected: kernel }
             fieldset { legend { "Root disk source" },
                 div { class: "radio-group",
-                    for (value, label) in [("local", "Local disk"), ("remote", "Remote disk"), ("oci", "OCI image")] {
+                    for (value, label) in [("oci", "OCI Image"), ("local", "Local Disk"), ("remote", "Remote Disk")] {
                         label { input { r#type: "radio", name: "asset-source", value, checked: source() == value,
                             onchange: move |_| source.set(value.into()) } "{label}" }
                     }

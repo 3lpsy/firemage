@@ -84,13 +84,13 @@ pub fn PolicyEditor(
                                 Field { label: "Alias", id: "policy-alias", value: alias, required: true, placeholder: "model-review" }
                                 p { class: "small muted", "Unique within the owner account. VMs keep their reference when the alias changes." }
                             }
-                            Section { id: "http", title: "HTTP rules", summary: if draft.read().http { format!("{} rules",draft.read().rules.len()) } else { "Disabled".into() }, open: true,
-                                policy_sections::Http { draft }
-                            }
+                            policy_sections::HttpSection { draft }
                             Section { id: "tunnels", title: "TCP tunnels", summary: format!("{} tunnels",draft.read().tunnels.len()), policy_sections::Tunnels { draft } }
                             Section { id: "upstream", title: "Upstream proxy", summary: if upstream().is_empty() { "Direct" } else if upstream() == "default" { "Server default" } else { "Shared proxy" }, open: true,
-                                CatalogSelect { key: "proxy-{refresh}", kind: "proxies", label: "Upstream proxy", id: "policy-upstream", selected: upstream(), upstream: true, owner,
-                                    onchange: move |id| { upstream.set(id); draft.write().inherit_upstream = upstream() == "default"; }, oncreate: if can_create_proxy { Some(EventHandler::new(move |_| proxy_editor.set(true))) } else { None },
+                                for version in [refresh()] {
+                                    CatalogSelect { key: "proxy-{version}", kind: "proxies", label: "Upstream proxy", id: "policy-upstream", selected: upstream(), upstream: true, owner: owner.clone(),
+                                        onchange: move |id| { upstream.set(id); draft.write().inherit_upstream = upstream() == "default"; }, oncreate: if can_create_proxy { Some(EventHandler::new(move |_| proxy_editor.set(true))) } else { None },
+                                    }
                                 }
                                 p { class: "small muted", "VM → Firemage → upstream proxy → allowed destination. Proxy failures never fall back to direct access." }
                             }

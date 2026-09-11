@@ -64,7 +64,9 @@ impl Runtime {
             let (state, memory) = self.snapshot_import(&starting,
                 stage.path().join("state.bin").to_str().context("invalid snapshot path")?,
                 stage.path().join("memory.bin").to_str().context("invalid memory path")?).await?;
-            fc.call("PUT", "/snapshot/load", json!({"snapshot_path":state,"mem_backend":{"backend_type":"File","backend_path":memory},"resume_vm":false,"network_overrides":overrides})).await?;
+            let mut load = json!({"snapshot_path":state,"mem_backend":{"backend_type":"File","backend_path":memory},"resume_vm":false,"network_overrides":overrides});
+            if spec.web_terminal.is_some() { load["vsock_override"] = json!({"uds_path": self.shell_device_path(&starting, &spec)}); }
+            fc.call("PUT", "/snapshot/load", load).await?;
             let actual = compatibility::ensure_devices(&fc, &spec).await?;
             let disks = actual["drives"].as_array().context("missing restored disks")?;
             anyhow::ensure!(disks.iter().any(|drive| drive["drive_id"] == "seed") == manifest.files.contains_key("seed.ext4"), "restored seed device differs from snapshot bundle");

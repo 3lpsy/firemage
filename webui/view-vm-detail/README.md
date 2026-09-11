@@ -5,3 +5,4 @@ VM sidebar and full page with configuration transfer, attachments, lifecycle con
 - `view` crate in the desktop web UI.
 - Full pages use `#vms/{id}` and share tabs with the inventory sidebar.
 - Start prepares automatically; manual Launch appears only for eligible VM definitions.
+- Web Shell opens a separate guest PTY; Serial keeps log output and raw TTY Stream independent.

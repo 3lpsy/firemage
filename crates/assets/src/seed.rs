@@ -85,6 +85,9 @@ async fn stage(
             "combined guest boot inputs exceed {maximum} bytes"
         );
         private_file(&path, &bytes).await?;
+        if file.path == "firemage/firemage-guest" {
+            tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).await?;
+        }
         if let Some(destination) = &file.destination {
             let parent = Path::new(destination)
                 .parent()
@@ -103,6 +106,19 @@ async fn stage(
                 destination
             );
         }
+    }
+    if files
+        .iter()
+        .any(|file| file.path == "firemage/firemage-guest")
+    {
+        setup += r#"mkdir -p /dev/pts
+firemage_devpts_mounted=0
+while read -r device target rest; do
+    if [ "$target" = /dev/pts ]; then firemage_devpts_mounted=1; break; fi
+done < /proc/mounts
+if [ "$firemage_devpts_mounted" -eq 0 ]; then mount -t devpts devpts /dev/pts; fi
+/firemage/input/firemage/firemage-guest </dev/null &
+"#;
     }
     if let Some(userdata) = userdata {
         private_file(&staging.join("user-data"), userdata.as_bytes()).await?;

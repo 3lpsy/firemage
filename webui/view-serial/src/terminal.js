@@ -1,9 +1,10 @@
 import "/assets/vendor/xterm.js";
 import "/assets/vendor/addon-fit.js";
 
-export function mountTerminal(containerId, statusId, id, csrf) {
+export function mountTerminal(containerId, statusId, actionId, id, csrf) {
   const container = document.getElementById(containerId);
   const status = document.getElementById(statusId);
+  const action = document.getElementById(actionId);
   const terminal = new globalThis.Terminal({
     cursorBlink: true, disableStdin: true, scrollback: 3000,
     fontSize: 13, fontFamily: "ui-monospace, monospace",
@@ -15,25 +16,35 @@ export function mountTerminal(containerId, statusId, id, csrf) {
   const resize = new ResizeObserver(() => fit.fit());
   resize.observe(container);
   fit.fit();
-  const controller = new AbortController();
   const path = `/v1/vms/${encodeURIComponent(id)}`;
-  let stopped = false;
-  let timer;
-  let offset;
-  let queuedBytes = 0;
-  let pending = Promise.resolve();
   const encoder = new TextEncoder();
-  const fail = (error) => {
-    if (stopped) return;
-    status.textContent = `${error.message}. Disconnect and reconnect to retry.`;
-    terminal.options.disableStdin = true;
-    stopped = true;
-    clearTimeout(timer);
-    controller.abort();
+  let disposed = false;
+  let session;
+  let offset;
+  const isCurrent = current => !disposed && session === current && !current.controller.signal.aborted;
+  const show = (state, message, label, detail = message) => {
+    status.textContent = message;
+    status.dataset.state = state;
+    status.title = detail;
+    action.textContent = label;
   };
-  const request = async (url, options = {}) => {
+  const disconnect = () => {
+    if (session) {
+      clearTimeout(session.timer);
+      session.controller.abort();
+      session = undefined;
+    }
+    terminal.options.disableStdin = true;
+  };
+  const fail = (current, error) => {
+    if (!isCurrent(current)) return;
+    disconnect();
+    show("failed", "Connection failed", "Reconnect", error.message);
+  };
+  const request = async (current, url, options = {}) => {
+    if (!isCurrent(current)) throw new DOMException("Session closed", "AbortError");
     const response = await fetch(url, {
-      credentials: "same-origin", signal: controller.signal, ...options,
+      credentials: "same-origin", signal: current.controller.signal, ...options,
     });
     if (response.status === 401) window.dispatchEvent(new Event("firemage-session-expired"));
     if (!response.ok) {
@@ -43,20 +54,21 @@ export function mountTerminal(containerId, statusId, id, csrf) {
     return response.status === 204 ? null : response.json();
   };
   document.fonts.load('13px "Firemage Mono"').then(() => {
-    if (!stopped) {
+    if (!disposed) {
       terminal.options.fontFamily = '"Firemage Mono", monospace';
       fit.fit();
     }
-  }).catch(fail);
+  }).catch(() => {});
   const input = terminal.onData((data) => {
-    if (stopped || terminal.options.disableStdin) return;
+    const current = session;
+    if (!current || !isCurrent(current) || terminal.options.disableStdin) return;
     const bytes = encoder.encode(data).length;
-    if (queuedBytes + bytes > 65536) return fail(new Error("Terminal input queue is full"));
-    queuedBytes += bytes;
-    pending = pending.then(async () => {
+    if (current.queuedBytes + bytes > 65536) return fail(current, new Error("Serial input queue is full"));
+    current.queuedBytes += bytes;
+    current.pending = current.pending.then(async () => {
       let chunk = "";
       let size = 0;
-      const send = () => request(`${path}/terminal`, {
+      const send = () => request(current, `${path}/terminal`, {
         method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
         body: JSON.stringify({ input: chunk }),
       });
@@ -67,37 +79,56 @@ export function mountTerminal(containerId, statusId, id, csrf) {
         size += length;
       }
       if (chunk) await send();
-      queuedBytes -= bytes;
-    }).catch(fail);
+      current.queuedBytes -= bytes;
+    }).catch(error => fail(current, error));
   });
-  const poll = async () => {
-    if (stopped) return;
+  const poll = async current => {
+    if (!isCurrent(current)) return;
     try {
-      const capability = await request(`${path}/terminal`);
+      const capability = await request(current, `${path}/terminal`);
+      if (!isCurrent(current)) return;
       const available = capability.state === "available";
       terminal.options.disableStdin = !available;
-      status.textContent = {
-        available: "Connected to guest ttyS0. A guest console program is required.",
-        disabled: "Terminal input is disabled.",
+      const message = {
+        available: "Connected",
+        disabled: "Serial input disabled",
         "not-running": "Waiting for the VM to run.",
-        "restart-required": "Stop and start this VM to restore terminal input after the server restart.",
-      }[capability.state] || "Terminal unavailable.";
+        "restart-required": "VM restart required",
+      }[capability.state] || "Serial input unavailable";
+      const detail = capability.state === "restart-required"
+        ? "Stop and start this VM to restore serial input after the server restart."
+        : message;
       const query = offset === undefined ? "" : `&offset=${offset}`;
-      const output = await request(`${path}/logs?stream=serial${query}`);
+      const output = await request(current, `${path}/logs?stream=serial${query}`);
+      if (!isCurrent(current)) return;
       if (output.reset) terminal.reset();
-      const data = Uint8Array.from(atob(output.base64), (character) => character.charCodeAt(0));
-      if (data.length) await new Promise((resolve) => terminal.write(data, resolve));
+      const data = Uint8Array.from(atob(output.base64), character => character.charCodeAt(0));
       offset = output.offset;
-      if (!stopped) timer = setTimeout(poll, 500);
-    } catch (error) { fail(error); }
+      if (data.length) await new Promise(resolve => terminal.write(data, resolve));
+      if (!isCurrent(current)) return;
+      show(available ? "connected" : "waiting", message, "Disconnect", detail);
+      current.timer = setTimeout(() => poll(current), 500);
+    } catch (error) { fail(current, error); }
   };
-  poll();
-  terminal.focus();
+  const connect = () => {
+    disconnect();
+    if (disposed) return;
+    session = { controller: new AbortController(), queuedBytes: 0, pending: Promise.resolve() };
+    show("connecting", "Connecting…", "Disconnect");
+    poll(session);
+    terminal.focus();
+  };
+  const toggle = () => {
+    if (session) { disconnect(); show("disconnected", "Disconnected", "Connect"); }
+    else connect();
+  };
+  action.addEventListener("click", toggle);
+  connect();
   return {
     dispose() {
-      stopped = true;
-      clearTimeout(timer);
-      controller.abort();
+      disposed = true;
+      disconnect();
+      action.removeEventListener("click", toggle);
       resize.disconnect();
       input.dispose();
       terminal.dispose();

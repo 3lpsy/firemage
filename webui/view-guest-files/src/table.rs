@@ -1,5 +1,6 @@
 use crate::state::{Crumb, Directory, size, visible_name};
 use dioxus::prelude::*;
+use firemage_webui_component_controls::Icon;
 use firemage_webui_provider_api::encode;
 
 #[component]
@@ -19,12 +20,17 @@ pub fn Entries(
                         tr { key: "{entry.inode}-{entry.name}",
                             td {
                                 if entry.kind == "directory" {
-                                    button { class: "quiet guest-folder-link",
-                                        onclick: { let mut target = path.clone(); target.push(Crumb { inode: entry.inode, name: entry.name.clone() }); move |_| navigate.call(target.clone()) },
+                                    a { class: "guest-folder-link", href: format!("#vms/{}", encode(&id)),
+                                        onclick: { let mut target = path.clone(); target.push(Crumb { inode: entry.inode, name: entry.name.clone() }); move |event| { if event.modifiers().is_empty() { event.prevent_default(); navigate.call(target.clone()); } } },
                                         span { class: "guest-folder-icon", "aria-hidden": "true" }
                                         "{visible_name(&entry.name)}"
                                     }
-                                } else { "{visible_name(&entry.name)}" }
+                                } else {
+                                    span { class: "guest-file-name",
+                                        Icon { name: "assets", size: 16 }
+                                        "{visible_name(&entry.name)}"
+                                    }
+                                }
                             }
                             td { if let Some(bytes) = entry.size_bytes { "{size(bytes)}" } else { "{entry.kind}" } }
                             td { "{entry.uid}:{entry.gid}" }

@@ -68,9 +68,11 @@ impl Runtime {
             "snapshot memory must be a regular file"
         );
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
-        Ok(
-            json!({"vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?, "security": spec.security}),
-        )
+        let mut record = json!({"vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?, "security": spec.security});
+        if let Some(terminal) = spec.web_terminal {
+            record["web_terminal"] = serde_json::to_value(terminal)?;
+        }
+        Ok(record)
     }
     fn snapshot_record_path(&self, id: &str, record: &Value) -> anyhow::Result<PathBuf> {
         let state = record["state"]

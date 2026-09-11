@@ -38,3 +38,5 @@ mod guest_files;
 mod snapshot_library;
 
 mod stopped;
+
+mod web_shell;

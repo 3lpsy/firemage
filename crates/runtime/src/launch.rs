@@ -86,6 +86,9 @@ impl Runtime {
                 .arg(self.directory(&row.id).join("firecracker.log"));
             command
         };
+        if spec.security.mode != IsolationMode::Jailed {
+            self.prepare_shell_directory(row, &spec).await?;
+        }
         let child = command
             .env_clear()
             .stdin(if spec.terminal {
@@ -113,6 +116,7 @@ impl Runtime {
             if fc.state().await.is_ok() {
                 if spec.security.mode == IsolationMode::Jailed {
                     self.secure_jail(row).await?;
+                    self.prepare_shell_directory(row, &spec).await?;
                     self.stage_jail_resources(row, &spec).await?;
                 }
                 return Ok(());

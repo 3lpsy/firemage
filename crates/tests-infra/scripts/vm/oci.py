@@ -13,6 +13,7 @@ import tarfile
 import threading
 
 from .harness import wait_for
+from .web_shell import verify as verify_web_shell
 
 
 def digest(path):
@@ -123,6 +124,7 @@ def private_oci(harness):
         userdata = "set -eu\n[ \"$IMAGE_VALUE\" = from-oci ]\nprintf 'ready\\n' > /firemage/output/userdata-result\n"
         script = """set -eu
 [ "$(ls /sys/class/net)" = lo ]
+[ ! -e /firemage/input/firemage/firemage-guest ]
 [ "$IMAGE_VALUE" = from-oci ]
 [ "$(cat /firemage/output/userdata-result)" = ready ]
 printf 'native-private-oci-ok\\n' > /firemage/output/result
@@ -148,6 +150,7 @@ printf 'native-private-oci-ok\\n' > /firemage/output/result
         assert not list((harness.data / "vms" / vm).glob(".firemage-oci-*")), "OCI extraction staging leaked"
         assert password not in harness.console(vm), "registry credentials leaked into guest logs"
         rootfs = returned["spec"]["rootfs"]
+        verify_web_shell(harness, rootfs)
         no_command_manifest, no_command_config = commandless_fixture(directory, manifest, config)
         server.files.update({
             f"/v2/test/image/manifests/{digest(no_command_manifest)}": (no_command_manifest, "application/vnd.oci.image.manifest.v1+json"),

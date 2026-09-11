@@ -63,7 +63,7 @@ async fn portable_roundtrip_resolves_owner_aliases_without_exporting_secret_valu
         "name":"review", "kernel":{"kind":"kernel","name":"vmlinux-test"},
         "attachments":[{"asset_id":asset.id,"destination":"/opt/source.tar.gz"}],
         "secret_attachments":[{"secret":"credentials","destination":"/root/.config/service/auth.json"}],
-        "environment":{"LANG":"C.UTF-8"}, "terminal":true
+        "environment":{"LANG":"C.UTF-8"}, "terminal":true, "web_terminal":{"command":["/bin/bash","-i"]}
     })).unwrap();
     let vm = runtime.define(&owner, spec).await.unwrap();
     let encoded = runtime.export_vm_config(&owner, &vm.id).await.unwrap();
@@ -86,6 +86,7 @@ async fn portable_roundtrip_resolves_owner_aliases_without_exporting_secret_valu
     assert_eq!(restored.attachments[0].asset_id, asset.id);
     assert_eq!(restored.secret_attachments[0].mode, 0o600);
     assert!(restored.terminal);
+    assert_eq!(restored.web_terminal.unwrap().command, ["/bin/bash", "-i"]);
     assert_eq!(preview.name, "copy");
     assert!(
         preview
@@ -253,7 +254,7 @@ async fn duplication_copies_configuration_references_without_copying_managed_fil
         .define(
             &owner,
             serde_json::from_value(json!({
-                "name":"original", "memory_mib":768, "terminal":true,
+                "name":"original", "memory_mib":768, "terminal":true, "web_terminal":{},
                 "secret_attachments":[{"secret":"credentials","destination":"/root/auth.json"}],
                 "environment":{"TOKEN":{"secret":"credentials"}}, "userdata":"echo setup"
             }))
@@ -273,6 +274,10 @@ async fn duplication_copies_configuration_references_without_copying_managed_fil
     assert_eq!(duplicate.spec.name, "copy");
     assert_eq!(duplicate.spec.memory_mib, 768);
     assert!(duplicate.spec.terminal);
+    assert_eq!(
+        duplicate.spec.web_terminal.as_ref().unwrap().command,
+        ["/bin/sh", "-i"]
+    );
     assert_eq!(duplicate.spec.secret_attachments[0].secret, "credentials");
     assert_eq!(duplicate.spec.userdata.as_deref(), Some("echo setup"));
     assert!(!runtime.directory(&duplicate.id).exists());
