@@ -11,6 +11,12 @@ impl Runtime {
         if matches!(action, VmAction::Refresh) {
             return view(self.refresh(row).await?);
         }
+        if matches!(
+            action,
+            VmAction::Launch | VmAction::Prepare | VmAction::Start
+        ) {
+            row = self.refresh(row).await?;
+        }
         let fc = Firecracker::new(std::path::Path::new(&row.socket))?;
         let result = async {
             match action {

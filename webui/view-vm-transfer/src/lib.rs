@@ -20,6 +20,11 @@ pub fn Configuration(vm: Value, onedit: EventHandler<()>, onchanged: EventHandle
         let id = text(&vm, "id");
         async move { get(&format!("/v1/vms/{id}/config")).await }
     }));
+    let toml = exported
+        .read()
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|value| text(value, "toml"));
     rsx! {
         div { class: "heading compact",
             h3 { "Configuration" }
@@ -28,14 +33,17 @@ pub fn Configuration(vm: Value, onedit: EventHandler<()>, onchanged: EventHandle
                     button { disabled: !editable, onclick: move |_| onedit.call(()), "Configure VM" }
                     button { disabled: !editable, onclick: move |_| importing.set(true), "Import config" }
                 }
+                if let Some(toml) = &toml {
+                    a { class: "button", href: format!("data:application/toml;charset=utf-8,{}", encode(toml)), download: "vm-config.toml", "Export config" }
+                }
                 button { onclick: move |_| exported.restart(), "Refresh export" }
             }
         }
-        p { class: "small muted", "Catalog references use aliases. Stored secrets remain name references. Configured literal values and userdata are included." }
         match exported.read().as_ref() {
             Some(Ok(value)) => rsx! {
-                a { class: "button", href: format!("data:application/toml;charset=utf-8,{}", encode(value["toml"].as_str().unwrap_or_default())), download: "vm-config.toml", "Export config" }
+                div { class: "actions end", CopyButton { source: CopySource::Text(text(value, "toml")), label: "Copy VM configuration" } }
                 pre { class: "config-export", "{text(value, \"toml\")}" }
+                p { class: "small muted", "Catalog references use aliases. Stored secrets remain name references. Configured literal values and userdata are included." }
             },
             Some(Err(error)) => rsx! { Notice { message: error.clone() } },
             None => rsx! { p { "Preparing export…" } },

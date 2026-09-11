@@ -175,6 +175,9 @@ fn Inventory() -> Element {
                                         r#"{vm["spec"]["vcpus"]} / {vm["spec"]["memory_mib"]} MiB"#
                                     }
                                     td { class: "vm-row-chevron",
+                                        a { class: "icon-button vm-open-page", href: format!("#vms/{}", text(vm, "id")), title: "Open full page", "aria-label": format!("Open {} full page", text(&vm["spec"], "name")), onclick: move |event| event.stop_propagation(),
+                                            Icon { name: "external", size: 16 }
+                                        }
                                         Icon { name: "chevron-right", size: 16 }
                                     }
                                 }

@@ -152,3 +152,67 @@ async fn failed_managed_vm_stop_accepts_stale_socket_but_rejects_unverified_live
         drop(listener);
     }
 }
+
+#[tokio::test]
+async fn recovered_completed_process_is_stopped_before_its_parent_reaps_it() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = firemage_queries::connect("sqlite::memory:").await.unwrap();
+    let user = firemage_queries::add_user(&db, "operator".into(), None, true, None)
+        .await
+        .unwrap();
+    let runtime = Runtime::new(
+        db.clone(),
+        firemage_config::Server {
+            data_dir: Some(directory.path().into()),
+            ..Default::default()
+        },
+    );
+    let vm = runtime
+        .define(
+            &user.id,
+            serde_json::from_value(serde_json::json!({"name":"finished"})).unwrap(),
+        )
+        .await
+        .unwrap();
+    let mut child = std::process::Command::new("sh")
+        .args(["-c", "exit 7"])
+        .spawn()
+        .unwrap();
+    let pid = child.id() as i32;
+    let stat_path = format!("/proc/{pid}/stat");
+    let stat = tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let stat = std::fs::read_to_string(&stat_path).unwrap();
+            if stat.rsplit_once(") ").unwrap().1.starts_with("Z ") {
+                break stat;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let start = stat
+        .rsplit_once(") ")
+        .unwrap()
+        .1
+        .split_whitespace()
+        .nth(19)
+        .unwrap();
+    let identity = format!(
+        "{}:{start}",
+        std::fs::read_to_string("/proc/sys/kernel/random/boot_id")
+            .unwrap()
+            .trim()
+    );
+    firemage_queries::set_process(&db, &vm.id, pid, identity)
+        .await
+        .unwrap();
+    let row = firemage_queries::vm(&db, &user.id, &vm.id).await.unwrap();
+    let row = firemage_queries::set_vm_state(&db, row, "running", None, Some(pid))
+        .await
+        .unwrap();
+    let result = runtime.refresh(row).await;
+    let status = child.wait().unwrap();
+    assert_eq!(status.code(), Some(7));
+    assert_eq!(result.unwrap().state, "stopped");
+}

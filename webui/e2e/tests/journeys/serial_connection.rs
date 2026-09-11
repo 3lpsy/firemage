@@ -28,6 +28,7 @@ pub async fn connection(h: &Harness, id: &str, screenshot: &str) -> Result<()> {
     .await?;
     h.text("Waiting for the VM to run.").await?;
     h.element(By::Css(".guest-terminal .xterm-fg-1")).await?;
+    super::clipboard::copy(h, "Copy TTY stream", "guest-console-ready\nred guest text").await?;
     h.screenshot(screenshot).await?;
 
     h.driver
@@ -52,6 +53,12 @@ pub async fn connection(h: &Harness, id: &str, screenshot: &str) -> Result<()> {
     .click()
     .await?;
     h.text("guest-console-ready").await?;
+    super::clipboard::copy(
+        h,
+        "Copy serial output",
+        "guest-console-ready\r\n\x1b[31mred guest text\x1b[0m\r\n",
+    )
+    .await?;
     h.driver
         .execute(
             "window.fetch = window.__serialConnection.original; delete window.__serialConnection",

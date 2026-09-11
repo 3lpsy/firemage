@@ -10,3 +10,5 @@ python3 ci/internal/tests/test-ci-report.py
 python3 ci/internal/tests/test-release.py
 just test-mirror
 node --test ci/internal/tests/test-promotion.mjs
+node --test ci/internal/tests/test-registry-prune.mjs
+python3 ci/internal/tests/test-jobcache.py

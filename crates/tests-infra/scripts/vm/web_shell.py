@@ -88,5 +88,10 @@ exit 7
         harness.request("DELETE", f"/v1/snapshots/{saved['id']}")
     assert harness.output(vm, "exit-code") == b"7\n", harness.console(vm)
     assert harness.output(vm, "result") == b"main-complete\n"
+    completed = harness.console(vm).count("FIREMAGE_WEB_SHELL_MAIN_READY")
+    harness.action(vm, "start")
+    harness.state(vm, "stopped")
+    assert harness.console(vm).count("FIREMAGE_WEB_SHELL_MAIN_READY") == completed + 1, "Web Shell enabled one-shot VM did not restart"
+    assert harness.output(vm, "exit-code") == b"7\n", harness.console(vm)
     assert "stdout-ok" not in harness.console(vm), "Web Shell output leaked into serial"
-    print("PASS Web Shell: opt-in static helper, browser session, vsock PTY, input/output/resize, disconnect cleanup, serial coexistence, daemon recovery, snapshot restore, one-shot main exit", flush=True)
+    print("PASS Web Shell: opt-in static helper, browser session, vsock PTY, input/output/resize, disconnect cleanup, serial coexistence, daemon recovery, snapshot restore, one-shot main exit and restart", flush=True)

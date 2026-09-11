@@ -5,6 +5,7 @@ mod network;
 mod output_disk;
 mod prepare;
 mod process;
+mod refresh;
 pub use manager::*;
 
 mod duplicate;

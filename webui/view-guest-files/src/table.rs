@@ -1,6 +1,6 @@
 use crate::state::{Crumb, Directory, size, visible_name};
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Icon;
+use firemage_webui_component_controls::{CopyButton, CopySource, Icon};
 use firemage_webui_provider_api::encode;
 
 #[component]
@@ -37,7 +37,10 @@ pub fn Entries(
                             td { class: "mono", "{entry.mode:04o}" }
                             td {
                                 if entry.kind == "file" && entry.size_bytes.is_some_and(|bytes| bytes <= directory.max_file_bytes) {
-                                    a { class: "button quiet", href: format!("/v1/vms/{}/files/download?inode={}&filename={}", encode(&id), entry.inode, encode(&entry.name)), download: visible_name(&entry.name), "Download" }
+                                    div { class: "actions",
+                                        a { class: "button quiet icon-button", title: "Download file", "aria-label": format!("Download {}", visible_name(&entry.name)), href: format!("/v1/vms/{}/files/download?inode={}&filename={}", encode(&id), entry.inode, encode(&entry.name)), download: visible_name(&entry.name), Icon { name: "download" } }
+                                        CopyButton { source: CopySource::File(format!("/v1/vms/{}/files/download?inode={}&filename={}", encode(&id), entry.inode, encode(&entry.name))), label: format!("Copy contents of {}", visible_name(&entry.name)) }
+                                    }
                                 } else if entry.kind == "file" {
                                     span { class: "muted small", title: format!("Download limit: {}", size(directory.max_file_bytes)), if entry.size_bytes.is_some() { "Exceeds download limit" } else { "Size unavailable" } }
                                 } else if entry.kind != "directory" {

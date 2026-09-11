@@ -13,6 +13,18 @@ export function mountTerminal(containerId, statusId, actionId, id, csrf) {
   const fit = new globalThis.FitAddon.FitAddon();
   terminal.loadAddon(fit);
   terminal.open(container);
+  const readText = event => {
+    const buffer = terminal.buffer.active;
+    let text = "";
+    for (let index = 0; index < buffer.length; index++) {
+      const line = buffer.getLine(index);
+      if (index && !line.isWrapped) text += "\n";
+      const nextWrapped = buffer.getLine(index + 1)?.isWrapped === true;
+      text += line.translateToString(!nextWrapped);
+    }
+    event.detail.text = text.replace(/\n+$/, "");
+  };
+  container.addEventListener("firemage-copy-content", readText);
   const resize = new ResizeObserver(() => fit.fit());
   resize.observe(container);
   fit.fit();
@@ -129,6 +141,7 @@ export function mountTerminal(containerId, statusId, actionId, id, csrf) {
       disposed = true;
       disconnect();
       action.removeEventListener("click", toggle);
+      container.removeEventListener("firemage-copy-content", readText);
       resize.disconnect();
       input.dispose();
       terminal.dispose();

@@ -85,7 +85,7 @@ button.primary:hover,.button.primary:hover {
 .wide {
   width:100%;
 }
-button.icon-button {
+button.icon-button,a.icon-button {
   background:transparent;
   border-color:transparent;
   padding:5px;
@@ -93,10 +93,11 @@ button.icon-button {
   color:var(--muted);
   font-size:20px;
 }
-button.icon-button:hover {
+button.icon-button:hover,a.icon-button:hover {
   background:var(--raised);
   color:var(--text);
 }
+a.icon-button { display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid transparent;border-radius:6px;min-height:30px; }
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible {
   outline:2px solid var(--purple);
   outline-offset:3px;
@@ -572,9 +573,13 @@ tbody tr:hover {
   outline-offset:-2px;
 }
 .vm-row-chevron {
-  width:16px;
+  width:64px;
+  white-space:nowrap;
   color:var(--faint);
 }
+.vm-open-page { display:inline-flex;vertical-align:middle;margin-right:8px; }
+.vm-row-chevron > svg { vertical-align:middle; }
+.clipboard-feedback { max-width:220px;white-space:normal; }
 .vm-row:hover .vm-row-chevron,
 .vm-row.selected .vm-row-chevron {
   color:var(--purple);

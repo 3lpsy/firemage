@@ -27,6 +27,8 @@ pub fn Icon(name: String, #[props(default = 18)] size: u32) -> Element {
         }
         "chevron-down" => "M6 9L12 15L18 9",
         "plus" => "M12 5V19M5 12H19",
+        "copy" => "M8 8H21V21H8ZM16 8V3H3V16H8",
+        "download" => "M12 3V16M7 11L12 16L17 11M4 16V21H20V16",
         "chevron-right" => "M9 6L15 12L9 18",
         "close" => "M6 6 18 18M6 18 18 6",
         _ => "M4 4H20V20H4Z",

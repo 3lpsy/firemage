@@ -178,11 +178,16 @@ printf 'native-private-oci-ok\\n' > /firemage/output/result
                 harness.action(worker, "stop")
             else:
                 harness.state(worker, "stopped")
+            if mode == "one-shot":
+                completed = harness.console(worker).count("FIREMAGE_MAIN_DONE")
+                harness.action(worker, "start")
+                harness.state(worker, "stopped")
+                assert harness.console(worker).count("FIREMAGE_MAIN_DONE") == completed + 1, "one-shot restart did not rerun the workload"
             assert harness.output(worker, "exit-code") == f"{code}\n".encode(), harness.console(worker)
             assert harness.output(worker, "result") == b"override-ok\n"
             assert file_credential not in json.dumps(harness.request("GET", f"/v1/vms/{worker}"))
         assert server.authorized == set(server.files), "commandless OCI manifest was not pulled"
-        print("PASS OCI workload: commandless image override and missing-command rejection, userdata before main, secret files, nonzero one-shot exit and keep-alive", flush=True)
+        print("PASS OCI workload: commandless image override and missing-command rejection, userdata before main, secret files, nonzero one-shot exit, restart without Stop, and keep-alive", flush=True)
         print("PASS native OCI: private TLS registry, vault authentication, image command/environment, userdata, offline guest", flush=True)
     finally:
         server.shutdown()

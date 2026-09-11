@@ -1,7 +1,6 @@
 /target/
 /data/
 /.env
-/docs/internal/
 *.db
 *.db-shm
 *.db-wal

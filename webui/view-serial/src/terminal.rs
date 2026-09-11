@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use firemage_webui_component_controls::Info;
+use firemage_webui_component_controls::{CopyButton, CopySource, Info};
 use firemage_webui_provider_auth::use_auth;
 use wasm_bindgen::prelude::*;
 
@@ -49,6 +49,7 @@ fn TerminalSession(id: String, tabs: Element, csrf: String) -> Element {
                 Info { title: "TTY Stream", "Displays guest ttyS0 output and sends keyboard input to its console program. The guest must already provide a shell or getty. Opening this tab connects automatically." }
             }
         }
+        div { class: "actions end", CopyButton { source: CopySource::Terminal(container.clone()), label: "Copy TTY stream" } }
         div { id: container, class: "guest-terminal", onmounted: move |_| {
             *handle.borrow_mut() = Some(mount_terminal(&mount_container, &mount_status, &mount_action, &id, &csrf));
         } }

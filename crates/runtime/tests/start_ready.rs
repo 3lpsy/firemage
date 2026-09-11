@@ -17,7 +17,9 @@ struct Fake {
 async fn handle(State(fake): State<Fake>, request: Request) -> impl IntoResponse {
     let route = format!("{} {}", request.method(), request.uri().path());
     fake.requests.lock().await.push(route.clone());
-    Json(if route == "GET /vm/config" {
+    Json(if route == "GET /" {
+        json!({"state":"Not started"})
+    } else if route == "GET /vm/config" {
         if fake.configured {
             json!({"boot-source":{"kernel_image_path":"/manual-kernel"},"drives":[{"is_root_device":true}]})
         } else {
@@ -72,7 +74,7 @@ async fn start_prepares_manually_launched_vm_and_preserves_already_configured_vm
         let requests = fake.requests.lock().await.clone();
         assert_eq!(requests.last().unwrap(), "PUT /actions");
         if configured {
-            assert_eq!(requests, vec!["GET /vm/config", "PUT /actions"]);
+            assert_eq!(requests, vec!["GET /", "GET /vm/config", "PUT /actions"]);
         } else {
             assert!(requests.contains(&"PUT /machine-config".into()));
             assert!(requests.contains(&"PUT /boot-source".into()));

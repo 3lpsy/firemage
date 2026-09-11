@@ -276,6 +276,7 @@ ui-check:
     bash ci/build/cargo.sh check -p firemage-webui-app --target wasm32-unknown-unknown
 
 test-webui:
+    node --test webui/component-controls/tests/clipboard.mjs
     bash ci/runner/test-packages.sh webui
 
 test-infra-command:

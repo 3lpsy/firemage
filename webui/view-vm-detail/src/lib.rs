@@ -77,7 +77,7 @@ pub fn VmDetail(
                     span { class: "mono small muted", "{id}" }
                 }
                 if !full_page {
-                    a { class: "button", href: "#vms/{id}", "Open full page" }
+                    a { class: "icon-button", href: "#vms/{id}", title: "Open full page", "aria-label": "Open full page", Icon { name: "external", size: 16 } }
                 }
                 button {
                     class: "icon-button",
@@ -229,7 +229,7 @@ pub fn VmDetail(
             } else if confirm() == "stop" {
                 Confirm {
                     title: "Stop virtual machine?",
-                    description: "This immediately stops the process. Guest applications may not finish writing their output. Use Shut down for a graceful guest shutdown.",
+                    description: "This immediately stops the process. Guest applications may not finish writing their output. Shut down requests a guest shutdown when supported by its init.",
                     label: "Stop VM",
                     onclose: move |_| confirm.set(String::new()),
                     onconfirm: move |_| { action("stop".into()); confirm.set(String::new()); },

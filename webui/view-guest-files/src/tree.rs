@@ -1,5 +1,6 @@
 use crate::state::{BrowserState, Crumb, visible_name};
 use dioxus::prelude::*;
+use firemage_webui_component_controls::Icon;
 
 #[component]
 pub fn Folder(
@@ -50,7 +51,7 @@ pub fn Folder(
                         if expanded { state.write().expanded.remove(&inode); }
                         else { navigate.call(open_path.clone()); }
                     },
-                    if expanded { "⌄" } else { "›" }
+                    Icon { name: if expanded { "chevron-down" } else { "chevron-right" }, size: 14 }
                 }
                 button { class: "guest-tree-name", title: visible_name(&node.name),
                     onclick: move |_| navigate.call(select_path.clone()), "{visible_name(&node.name)}"

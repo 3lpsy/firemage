@@ -25,10 +25,11 @@ pub fn controls(vm: &Value, networks: &Value) -> Vec<(&'static str, &'static str
         (
             "Stop",
             "stop",
-            matches!(
-                state,
-                "ready" | "running" | "paused" | "starting" | "unknown"
-            ),
+            !spec["socket"].is_string()
+                && matches!(
+                    state,
+                    "ready" | "running" | "paused" | "starting" | "unknown" | "failed"
+                ),
         ),
         ("Refresh", "refresh", true),
     ]
@@ -64,5 +65,40 @@ mod tests {
             "launch"
         ));
         assert!(!enabled("paused", "jailed", Value::Null, "start"));
+        for state in [
+            "defined", "ready", "running", "paused", "stopped", "failed", "unknown",
+        ] {
+            assert_eq!(
+                enabled(state, "jailed", Value::Null, "pause"),
+                state == "running"
+            );
+            assert_eq!(
+                enabled(state, "jailed", Value::Null, "shutdown"),
+                state == "running"
+            );
+            assert_eq!(
+                enabled(state, "jailed", Value::Null, "resume"),
+                state == "paused"
+            );
+        }
+        assert!(enabled("failed", "jailed", Value::Null, "stop"));
+        let external = controls(
+            &json!({"state":"running", "spec":{"socket":"/run/external.sock", "security":{"mode":"external"}}}),
+            &Value::Null,
+        );
+        assert!(
+            !external
+                .iter()
+                .find(|(_, command, _)| *command == "stop")
+                .unwrap()
+                .2
+        );
+        assert!(
+            external
+                .iter()
+                .find(|(_, command, _)| *command == "shutdown")
+                .unwrap()
+                .2
+        );
     }
 }

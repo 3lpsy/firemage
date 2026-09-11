@@ -1,8 +1,10 @@
 //! Form controls, dialogs, notices, and compact resource summaries.
 use dioxus::prelude::*;
+mod clipboard;
 mod focus;
 mod icon;
 mod secret_field_label;
+pub use clipboard::{CopyButton, CopySource};
 pub use icon::Icon;
 pub use secret_field_label::SecretFieldLabel;
 #[component]

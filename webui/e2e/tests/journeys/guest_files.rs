@@ -62,6 +62,7 @@ pub async fn navigate(h: &Harness) -> Result<()> {
             == 1,
         "symlinks or oversized files had download links"
     );
+    super::clipboard::copy(h, "Copy contents of résumé notes.txt", "review notes").await?;
     h.screenshot("guest-files-tree").await?;
     h.element(By::Css(".guest-file-breadcrumbs a"))
         .await?

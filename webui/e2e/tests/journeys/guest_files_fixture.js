@@ -11,6 +11,9 @@ const directories = {
 };
 window.fetch = async function(input, options) {
     const url = new URL(typeof input === "string" ? input : input.url, location.href);
+    if (url.pathname === `/v1/vms/${vmId}/files/download` && url.searchParams.get("inode") === "31") {
+        return new Response("review notes", {status: 200, headers: {"content-type": "application/octet-stream"}});
+    }
     if (url.pathname === `/v1/vms/${vmId}/directory`) {
         const inode = Number(url.searchParams.get("inode") || 2);
         fixture.reads.push(inode);

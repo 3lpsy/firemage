@@ -1,4 +1,5 @@
 mod access;
+mod clipboard;
 mod configuration;
 mod resources;
 pub use access::*;

@@ -2,18 +2,22 @@ use anyhow::Context;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 
 pub(crate) fn identity(pid: i32) -> anyhow::Result<String> {
+    Ok(process_identity(pid)?.0)
+}
+fn process_identity(pid: i32) -> anyhow::Result<(String, bool)> {
     anyhow::ensure!(pid > 1, "invalid Firecracker process id");
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat"))?;
     let fields = stat.rsplit_once(") ").context("invalid process stat")?.1;
+    let is_running = !matches!(fields.split_whitespace().next(), Some("Z" | "X" | "x"));
     let started = fields
         .split_whitespace()
         .nth(19)
         .context("missing process start time")?;
     let boot = std::fs::read_to_string("/proc/sys/kernel/random/boot_id")?;
-    Ok(format!("{}:{started}", boot.trim()))
+    Ok((format!("{}:{started}", boot.trim()), is_running))
 }
 pub(crate) fn is_alive(pid: i32, expected: &str) -> bool {
-    identity(pid).is_ok_and(|actual| actual == expected)
+    process_identity(pid).is_ok_and(|(actual, is_running)| is_running && actual == expected)
 }
 
 // A pidfd pins process identity, so a recycled PID cannot receive the stop signal.

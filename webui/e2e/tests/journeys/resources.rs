@@ -110,11 +110,20 @@ pub async fn resources(h: &Harness) -> Result<()> {
             .await?;
         h.absent(By::Css(".vm-detail")).await?;
     }
-    h.element(By::Css(".vm-row-chevron svg"))
+    h.element(By::Css(".vm-open-page")).await?.click().await?;
+    h.element(By::Css(".vm-full-page")).await?;
+    h.absent(By::Css(".vm-detail:not(.vm-full-page)")).await?;
+    h.navigate("Virtual machines").await?;
+    h.element(By::Css(".vm-row-chevron > svg"))
         .await?
         .click()
         .await?;
     h.text("No network").await?;
+    h.element(By::Css(".vm-detail a[aria-label='Open full page']"))
+        .await?
+        .click()
+        .await?;
+    h.element(By::Css(".vm-full-page")).await?;
     super::security::limits(h).await?;
     h.button("Overview").await?;
     h.button("Configure VM").await?;

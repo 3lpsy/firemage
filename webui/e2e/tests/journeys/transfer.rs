@@ -43,6 +43,11 @@ pub async fn transfer(h: &Harness) -> Result<()> {
         "export download is missing"
     );
     h.screenshot("vm-config-export").await?;
+    let exact = h.api(&format!("/v1/vms/{original_id}/config")).await?["toml"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    super::clipboard::copy(h, "Copy VM configuration", &exact).await?;
 
     h.navigate("Virtual machines").await?;
     h.button("Import").await?;
