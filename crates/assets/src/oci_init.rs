@@ -7,17 +7,24 @@ pub(crate) fn init(process: &serde_json::Value) -> anyhow::Result<String> {
     let args = process["args"]
         .as_array()
         .context("OCI image has no command")?;
-    anyhow::ensure!(!args.is_empty(), "OCI image has no command");
     let mut init = String::from(
         r#"#!/bin/sh
 set -eu
+firemage_workload_mode=one-shot
+firemage_stage=setup
 finish() {
     status=$?
     trap - EXIT
     set +e
     mkdir -p /firemage/output
     printf '%s\n' "$status" > /firemage/output/exit-code
+    printf '[firemage] %s exited with status %s\n' "$firemage_stage" "$status"
     sync
+    if [ "$firemage_workload_mode" = keep-alive ]; then
+        printf '[firemage] main program will not restart; guest remains running\n'
+        while :; do sleep 3600; done
+    fi
+    printf '[firemage] stopping guest\n'
     reboot -f
     while :; do sleep 3600; done
 }
@@ -52,6 +59,13 @@ esac
             init += &format!("export {}\n", quote(value));
         }
     }
+    init += "set --";
+    for arg in args {
+        init += &format!(" {}", quote(arg.as_str().context("invalid OCI argument")?));
+    }
+    init += "\nif [ -f /firemage/input/firemage/workload.sh ]; then\n    . /firemage/input/firemage/workload.sh\nfi\n";
+    init += "if [ \"$#\" -eq 0 ] || [ -z \"$1\" ]; then\n    printf '[firemage] no workload command configured\\n' >&2\n    exit 127\nfi\n";
+    init += "printf '[firemage] setup started\\n'\n";
     init += r#"if [ -f /firemage/input/firemage/network.sh ]; then
     /bin/sh /firemage/input/firemage/network.sh
 fi
@@ -62,18 +76,18 @@ if [ -f /firemage/input/firemage/setup.sh ]; then
     /bin/sh /firemage/input/firemage/setup.sh
 fi
 if [ -f /firemage/input/user-data ]; then
+    firemage_stage=userdata
+    printf '[firemage] userdata started\n'
     /bin/sh /firemage/input/user-data
+    printf '[firemage] userdata completed\n'
+    firemage_stage=setup
 fi
 "#;
     init += &format!(
         "cd {} || exit 1\n",
         quote(process["cwd"].as_str().unwrap_or("/"))
     );
-    init += "set +e\n";
-    for arg in args {
-        init += &format!("{} ", quote(arg.as_str().context("invalid OCI argument")?));
-    }
-    init += "\nexit $?\n";
+    init += "firemage_stage=workload\nprintf '[firemage] main program started\\n'\nset +e\n\"$@\"\nexit $?\n";
     Ok(init)
 }
 

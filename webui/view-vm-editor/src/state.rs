@@ -43,6 +43,21 @@ pub fn use_fields(initial: &Value) -> Fields {
     let registry =
         use_signal(|| registry::RegistryForm::from_value(&initial["rootfs"]["registry"]));
     let rootfs_sha = use_signal(|| text(&initial["rootfs"], "sha256"));
+    let rootfs_size = use_signal(|| {
+        initial["rootfs"]["size_mib"]
+            .as_u64()
+            .unwrap_or(2048)
+            .to_string()
+    });
+    let workload_mode = use_signal(|| {
+        initial["workload"]["mode"]
+            .as_str()
+            .unwrap_or("one-shot")
+            .to_owned()
+    });
+    let command = use_signal(|| optional_json(&initial["workload"]["command"]));
+    let terminal = use_signal(|| initial["terminal"].as_bool().unwrap_or(false));
+    let metadata = use_signal(|| optional_json(&initial["metadata"]));
     let vcpus = use_signal(|| initial["vcpus"].as_u64().unwrap_or(1).to_string());
     let memory = use_signal(|| initial["memory_mib"].as_u64().unwrap_or(256).to_string());
     let network = use_signal(|| text(&initial["network"], "network"));
@@ -50,7 +65,7 @@ pub fn use_fields(initial: &Value) -> Fields {
     let mac = use_signal(|| {
         initial["network"]["mac"]
             .as_str()
-            .unwrap_or("06:00:ac:10:00:02")
+            .unwrap_or_default()
             .to_owned()
     });
     let userdata = use_signal(|| text(initial, "userdata"));
@@ -71,6 +86,11 @@ pub fn use_fields(initial: &Value) -> Fields {
         rootfs,
         registry,
         rootfs_sha,
+        rootfs_size,
+        workload_mode,
+        command,
+        terminal,
+        metadata,
         vcpus,
         memory,
         network,
@@ -93,6 +113,11 @@ impl Fields {
             rootfs: (self.rootfs)(),
             registry: (self.registry)(),
             rootfs_sha: (self.rootfs_sha)(),
+            rootfs_size: (self.rootfs_size)(),
+            workload_mode: (self.workload_mode)(),
+            command: (self.command)(),
+            terminal: (self.terminal)(),
+            metadata: (self.metadata)(),
             vcpus: (self.vcpus)(),
             memory: (self.memory)(),
             network: (self.network)(),
@@ -133,6 +158,23 @@ impl Fields {
                 .into(),
         );
         self.rootfs_sha.set(text(&value["rootfs"], "sha256"));
+        self.rootfs_size.set(
+            value["rootfs"]["size_mib"]
+                .as_u64()
+                .unwrap_or(2048)
+                .to_string(),
+        );
+        self.workload_mode.set(
+            value["workload"]["mode"]
+                .as_str()
+                .unwrap_or("one-shot")
+                .into(),
+        );
+        self.command
+            .set(optional_json(&value["workload"]["command"]));
+        self.terminal
+            .set(value["terminal"].as_bool().unwrap_or(false));
+        self.metadata.set(optional_json(&value["metadata"]));
         self.registry.set(registry::RegistryForm::from_value(
             &value["rootfs"]["registry"],
         ));
@@ -142,13 +184,17 @@ impl Fields {
             .set(value["memory_mib"].as_u64().unwrap_or(256).to_string());
         self.network.set(text(&value["network"], "network"));
         self.address.set(text(&value["network"], "address"));
-        self.mac.set(
-            value["network"]["mac"]
-                .as_str()
-                .unwrap_or("06:00:ac:10:00:02")
-                .into(),
-        );
+        self.mac
+            .set(value["network"]["mac"].as_str().unwrap_or_default().into());
         self.attachments
             .set(firemage_webui_view_asset_attachments::from_spec(value));
+    }
+}
+
+fn optional_json(value: &Value) -> String {
+    if value.is_null() {
+        String::new()
+    } else {
+        serde_json::to_string_pretty(value).unwrap_or_default()
     }
 }

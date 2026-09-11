@@ -28,6 +28,7 @@ fn cli_overrides_environment_then_toml() {
             ])
             .env("FIREMAGE_PRECEDENCE_TEST", "1")
             .env("FIREMAGE_LISTEN", "127.0.0.1:9001")
+            .env("FIREMAGE_ASSET_MAX_BYTES", "2048")
             .env("FIREMAGE_URL", "https://env.example.test")
             .env("FIREMAGE_AUTHTOKEN", "session-env-test")
             .output()
@@ -45,6 +46,7 @@ fn cli_overrides_environment_then_toml() {
         [server]
         listen = "127.0.0.1:9000"
         session_ttl = 600
+        asset_max_bytes = 1024
         [client]
         url = "https://file.example.test"
         auth_token_path = "/tmp/test-token"
@@ -56,6 +58,7 @@ fn cli_overrides_environment_then_toml() {
     let client = env.client.merge(file.client.clone());
     assert_eq!(server.listen.as_deref(), Some("127.0.0.1:9001"));
     assert_eq!(server.session_ttl().unwrap(), 600);
+    assert_eq!(server.asset_max_bytes(), 2048);
     assert_eq!(client.url.as_deref(), Some("https://env.example.test"));
     assert_eq!(
         client.auth_token_path.unwrap(),
@@ -66,12 +69,15 @@ fn cli_overrides_environment_then_toml() {
         "firemage",
         "--listen",
         "127.0.0.1:9002",
+        "--asset-max-bytes",
+        "4096",
         "--url",
         "https://cli.example.test",
         "--authtoken",
         "session-cli-test",
     ])
     .unwrap();
+    assert_eq!(cli.server.asset_max_bytes(), 4096);
     assert_eq!(
         cli.server.merge(file.server).listen.as_deref(),
         Some("127.0.0.1:9002")

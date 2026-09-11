@@ -3,6 +3,29 @@ impl Server {
     pub fn validate(&self) -> anyhow::Result<()> {
         self.session_ttl()?;
         anyhow::ensure!(
+            self.snapshot_max_bytes() > 0 && self.snapshot_max_bytes() <= 1024 * 1024 * 1024 * 1024,
+            "snapshot_max_bytes must be positive and at most 1 TiB"
+        );
+        if let Some(path) = &self.snapshot_dir {
+            anyhow::ensure!(
+                path.is_absolute()
+                    && path.components().all(|part| matches!(
+                        part,
+                        std::path::Component::RootDir | std::path::Component::Normal(_)
+                    )),
+                "snapshot_dir must be an absolute directory without traversal"
+            );
+        }
+        anyhow::ensure!(
+            self.asset_max_bytes() > 0 && self.seed_max_bytes() <= isize::MAX as u64 / 2,
+            "asset_max_bytes must be positive and leave room for encoded boot inputs"
+        );
+        // Seed images reserve filesystem overhead and share the ext4 builder's 32 GiB ceiling.
+        anyhow::ensure!(
+            self.seed_max_bytes().div_ceil(1024 * 1024) * 5 / 4 + 16 <= 32768,
+            "asset_max_bytes exceeds the 32 GiB seed disk capacity"
+        );
+        anyhow::ensure!(
             self.kernel_dir().is_absolute()
                 && self.kernel_dir().components().all(|part| matches!(
                     part,

@@ -1,16 +1,23 @@
 """Preserve guest egress policy across daemon recovery and managed snapshots."""
 import hashlib
+import json
+import urllib.request
+import urllib.error
 
 from .harness import wait_for
 
 
-def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_port):
+def recovery(harness, target, gateway, network, policy, plain, tls, host_port):
     plain_port, tls_port = plain.server_address[1], tls.server_address[1]
+    definition = next(item for item in harness.request("GET", "/v1/networks") if item["name"] == network)
+    network = "snapshot-source-network"
+    definition["name"] = network
+    harness.request("POST", "/v1/networks", definition)
+    harness.networks.append(network)
     tls.stage = "initial"
     script = guest_script(target, gateway, plain_port, tls_port, host_port)
-    vm = harness.define("egress-recovery", script, network={
-        "network": network, "address": guest, "mac": "02:fc:00:00:00:06",
-    }, egress=policy)
+    attachment = harness.request("GET", f"/v1/networks/{network}/suggestion")
+    vm = harness.define("egress-recovery", script, network=attachment, egress=policy)
     harness.action(vm, "start")
     wait_for("initial guest egress", lambda: "FIREMAGE_EGRESS_INITIAL_OK" in harness.console(vm))
     initial = harness.request("GET", f"/v1/vms/{vm}/egress")
@@ -28,15 +35,42 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     seed = harness.data / "vms" / vm / "seed.ext4"
     with seed.open("rb") as source:
         seed_digest = hashlib.file_digest(source, "sha256").digest()
-    snapshots = harness.data / "vms" / vm / "snapshots"
-    snapshots.mkdir(exist_ok=True)
-    state, memory = snapshots / "egress.vmstate", snapshots / "egress.memory"
-    action = {"snapshot_path": str(state), "memory_path": str(memory)}
-    assert harness.request("POST", f"/v1/vms/{vm}/actions", {"action": "snapshot", **action})["state"] == "paused"
-    assert state.is_file() and memory.is_file()
+    saved = harness.request("POST", f"/v1/vms/{vm}/snapshots", {"alias": "egress-checkpoint"})
+    assert saved["source_vm_id"] == vm and saved["trusted"], saved
+    spec = harness.request("GET", f"/v1/vms/{vm}")["spec"]
     harness.action(vm, "stop")
-    assert not harness.request("GET", f"/v1/vms/{vm}/egress")["active"]
-    assert harness.request("POST", f"/v1/vms/{vm}/actions", {"action": "restore", **action})["state"] == "paused"
+    harness.request("DELETE", f"/v1/vms/{vm}")
+    harness.request("DELETE", f"/v1/networks/{network}")
+    assert any(item["id"] == saved["id"] for item in harness.request("GET", "/v1/snapshots"))
+    assert not (harness.data / "vms" / vm).exists(), "VM deletion retained managed disks"
+    request = urllib.request.Request(f"{harness.base}/v1/snapshots/{saved['id']}/download",
+                                     headers={"Authorization": f"Bearer {harness.token}"})
+    with harness.opener.open(request, timeout=120) as response:
+        bundle = response.read()
+    assert len(bundle) == saved["size_bytes"]
+    request = urllib.request.Request(f"{harness.base}/v1/snapshots?alias=imported-egress", method="POST", data=bundle,
+                                     headers={"Authorization": f"Bearer {harness.token}", "Content-Type": "application/octet-stream"})
+    with harness.opener.open(request, timeout=120) as response:
+        uploaded = json.load(response)
+    assert uploaded["source_vm_id"] is None and not uploaded["trusted"]
+    spec["name"] = "restored-egress-copy"
+    definition["name"] = "snapshot-target-network"
+    harness.request("POST", "/v1/networks", definition)
+    harness.networks.append(definition["name"])
+    spec["network"]["network"] = definition["name"]
+    vm = harness.request("POST", "/v1/vms", spec)["id"]
+    harness.vms.append(vm)
+    try:
+        harness.request("POST", f"/v1/vms/{vm}/snapshots/restore", {"snapshot_id": uploaded["id"]})
+        raise AssertionError("untrusted snapshot restored")
+    except AssertionError as error:
+        assert "must be trusted" in str(error), error
+    harness.request("POST", f"/v1/snapshots/{uploaded['id']}/trust")
+    restored_vm = harness.request("POST", f"/v1/vms/{vm}/snapshots/restore", {"snapshot_id": uploaded["id"]})
+    assert restored_vm["state"] == "paused" and restored_vm["spec"]["network"]["network"] == definition["name"], restored_vm
+    seed = harness.data / "vms" / vm / "seed.ext4"
+    harness.request("DELETE", f"/v1/snapshots/{saved['id']}")
+    harness.request("DELETE", f"/v1/snapshots/{uploaded['id']}")
     with seed.open("rb") as source:
         assert hashlib.file_digest(source, "sha256").digest() == seed_digest, "restore changed the guest's mounted seed disk"
     restored = harness.request("GET", f"/v1/vms/{vm}/egress")
@@ -49,7 +83,7 @@ def recovery(harness, target, gateway, guest, network, policy, plain, tls, host_
     for phase in ("initial", "restart", "restore"):
         assert f"/allowed/{phase}" in plain.paths, plain.paths
         assert f"/allowed/{phase}" in tls.paths, tls.paths
-    print("PASS egress recovery: daemon restart, stable CA, unchanged seed disk, managed snapshot stop/restore, HTTP/TLS allow and deny", flush=True)
+    print("PASS egress recovery: daemon restart, stable CA, unchanged seed disk, snapshot upload/download, source VM/network deletion, renamed target network, cross-VM restore, independent disks, HTTP/TLS allow and deny", flush=True)
 
 
 def guest_script(target, gateway, plain_port, tls_port, host_port):

@@ -16,7 +16,7 @@ pub async fn materialize(asset: &Asset, destination: &Path) -> anyhow::Result<Pa
             "OCI registry access must be resolved before materialization"
         );
     }
-    materialize_with_registry(asset, destination, &crate::RegistryOptions::default()).await
+    materialize_with_registry(asset, destination, &crate::RegistryOptions::default(), None).await
 }
 
 /// The caller resolves registry secrets before invoking this entry point.
@@ -24,10 +24,11 @@ pub async fn materialize_with_registry(
     asset: &Asset,
     destination: &Path,
     registry: &crate::RegistryOptions,
+    command_override: Option<&[String]>,
 ) -> anyhow::Result<PathBuf> {
     asset.validate()?;
     let partial = destination.with_extension("partial");
-    let result = materialize_inner(asset, &partial, registry).await;
+    let result = materialize_inner(asset, &partial, registry, command_override).await;
     if result.is_err() {
         let _ = tokio::fs::remove_file(&partial).await;
     }
@@ -39,6 +40,7 @@ async fn materialize_inner(
     asset: &Asset,
     destination: &Path,
     registry: &crate::RegistryOptions,
+    command_override: Option<&[String]>,
 ) -> anyhow::Result<()> {
     match asset {
         Asset::Kernel { .. } => anyhow::bail!("catalog kernels must be resolved by the runtime"),
@@ -96,7 +98,7 @@ async fn materialize_inner(
         }
         Asset::Oci {
             image, size_mib, ..
-        } => crate::oci::oci(image, *size_mib, destination, registry).await?,
+        } => crate::oci::oci(image, *size_mib, destination, registry, command_override).await?,
     }
     Ok(())
 }

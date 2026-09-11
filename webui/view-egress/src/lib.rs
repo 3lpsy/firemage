@@ -1,5 +1,6 @@
 //! Per-VM egress policy, connection instructions, and editor.
 mod editor;
+pub use editor::EgressEditor;
 mod fields;
 mod injection;
 mod model;

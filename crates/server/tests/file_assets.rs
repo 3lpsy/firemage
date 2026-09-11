@@ -43,6 +43,7 @@ async fn assets_http_enforces_owner_permissions_upload_limits_and_reference_prot
     let config = firemage_config::Server {
         data_dir: Some(directory.path().into()),
         asset_dir: Some(directory.path().join("assets")),
+        asset_max_bytes: Some(9 * 1024 * 1024),
         kernel_dir: Some(directory.path().join("kernels")),
         ..Default::default()
     };
@@ -78,6 +79,15 @@ async fn assets_http_enforces_owner_permissions_upload_limits_and_reference_prot
     let admin = Some(tokens[0].as_str());
     let other = Some(tokens[1].as_str());
     let reader = Some(tokens[2].as_str());
+    assert_eq!(
+        request(&router, "GET", "/v1/assets/limits", None, vec![])
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    let (status, limits) = request(&router, "GET", "/v1/assets/limits", reader, vec![]).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(limits["max_bytes"], 9 * 1024 * 1024);
     let upload = "/v1/assets?alias=review-config&filename=config.json";
     assert_eq!(
         request(&router, "POST", upload, reader, vec![]).await.0,
@@ -167,13 +177,7 @@ async fn assets_http_enforces_owner_permissions_upload_limits_and_reference_prot
         StatusCode::NO_CONTENT
     );
     assert!(!directory.path().join("assets").join(id).exists());
-    let (status, error) = request(
-        &router,
-        "POST",
-        upload,
-        admin,
-        vec![0; firemage_wire::FILE_ASSET_MAX_BYTES as usize + 1],
-    )
-    .await;
+    let (status, error) =
+        request(&router, "POST", upload, admin, vec![0; 9 * 1024 * 1024 + 1]).await;
     assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE, "{error}");
 }

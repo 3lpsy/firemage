@@ -1,15 +1,31 @@
 //! VM inventory, live resource totals, creation, and selected VM details.
+mod page;
 use dioxus::prelude::*;
 use firemage_webui_component_controls::*;
 use firemage_webui_provider_api::{get, text};
 use firemage_webui_provider_auth::use_auth;
 use firemage_webui_view_vm_detail::VmDetail;
-use firemage_webui_view_vm_editor::VmEditor;
 #[component]
 pub fn Vms() -> Element {
+    let vm_id = firemage_webui_routes::use_vm_id();
+    let target = vm_id();
+    if target == "new" {
+        return rsx! { page::CreateVmPage {} };
+    }
+    if let Some(id) = target.strip_suffix("/edit") {
+        return rsx! { page::EditVmPage { key: "{id}", id: id.to_owned() } };
+    }
+    if !target.is_empty() {
+        return rsx! { page::VmPage { key: "{target}", id: target } };
+    }
+    rsx! { Inventory {} }
+}
+
+#[component]
+fn Inventory() -> Element {
     let auth = use_auth();
     let mut refresh = use_signal(|| 0u32);
-    let mut creating = use_signal(|| false);
+    let mut importing = use_signal(|| false);
     let mut selected = use_signal(String::new);
     let mut filter = use_signal(String::new);
     let mut state_filter = use_signal(String::new);
@@ -51,7 +67,7 @@ pub fn Vms() -> Element {
                 p { class: "muted", "Define, inspect, and control your microVMs." }
             }
             if auth.is_admin() {
-                button { class: "primary", onclick: move |_| creating.set(true), "+ Create VM" }
+                div { class: "actions", button { onclick: move |_| importing.set(true), "Import" } button { class: "primary", onclick: move |_| firemage_webui_routes::navigate_vm_editor(None), "+ Create VM" } }
             }
         }
         div { class: "metrics",
@@ -117,6 +133,7 @@ pub fn Vms() -> Element {
                                 th { "NAME / SOURCE" }
                                 th { "STATE" }
                                 th { "CPU / MEMORY" }
+                                th { "aria-label": "Details" }
                             }
                         }
                         tbody {
@@ -128,13 +145,22 @@ pub fn Vms() -> Element {
                             {
                                 tr {
                                     key: r#"{vm["id"].as_str().unwrap_or_default()}"#,
-                                    class: if vm["id"] == selected() { "selected" } else { "" },
+                                    class: if vm["id"] == selected() { "vm-row selected" } else { "vm-row" },
+                                    onclick: {
+                                        let id = text(vm, "id");
+                                        move |_| selected.set(id.clone())
+                                    },
                                     td {
                                         button {
                                             class: "table-link",
+                                            "aria-expanded": (vm["id"] == selected()).to_string(),
+                                            "aria-controls": chosen.as_ref().map(|_| "vm-detail"),
                                             onclick: {
                                                 let id = text(vm, "id");
-                                                move |_| selected.set(id.clone())
+                                                move |event| {
+                                                    event.stop_propagation();
+                                                    selected.set(id.clone());
+                                                }
                                             },
                                             r#"{vm["spec"]["name"].as_str().unwrap_or_default()}"#
                                         }
@@ -147,6 +173,9 @@ pub fn Vms() -> Element {
                                     }
                                     td { class: "mono",
                                         r#"{vm["spec"]["vcpus"]} / {vm["spec"]["memory_mib"]} MiB"#
+                                    }
+                                    td { class: "vm-row-chevron",
+                                        Icon { name: "chevron-right", size: 16 }
                                     }
                                 }
                             }
@@ -164,14 +193,6 @@ pub fn Vms() -> Element {
                 }
             }
         }
-        if creating() {
-            VmEditor {
-                onclose: move |_| creating.set(false),
-                onsaved: move |_| {
-                    creating.set(false);
-                    refresh += 1;
-                },
-            }
-        }
+        if importing() { firemage_webui_view_vm_transfer::ImportVm { onclose: move |_| importing.set(false), onsaved: move |id| { importing.set(false); selected.set(id); refresh += 1; } } }
     }
 }

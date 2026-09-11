@@ -150,6 +150,10 @@ fj-runs workflow job="":
 fj-run-latest workflow:
     @bash ci/fj.sh run-latest "$1"
 
+# Delete older published release objects/assets, keeping one production and one development release.
+fj-purge-releases *args:
+    @bash ci/fj.sh purge-releases "$@"
+
 fj-run-wait workflow job since poll="30" tries="240":
     @bash ci/fj.sh run-wait "$1" "$2" "$3" "$4" "$5"
 

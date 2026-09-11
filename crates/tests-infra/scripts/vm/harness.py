@@ -160,18 +160,19 @@ class Harness:
         return base64.b64decode(value["base64"], validate=True)
 
     def console(self, vm):
-        path = self.data / "vms" / vm / "console.log"
+        path = self.data / "vms" / vm / "serial.log"
         return path.read_text(errors="replace") if path.exists() else ""
 
     def __exit__(self, *_):
         # Preserve evidence before API deletion removes each guest directory.
         if self.results.exists():
             for vm in self.vms:
-                source = self.data / "vms" / vm / "console.log"
-                if source.exists():
-                    destination = self.results / f"vm-{vm}.log"
-                    shutil.copyfile(source, destination)
-                    destination.chmod(0o644)
+                for stream in ["serial", "firecracker", "firecracker-stderr", "console"]:
+                    source = self.data / "vms" / vm / f"{stream}.log"
+                    if source.exists():
+                        destination = self.results / f"vm-{vm}-{stream}.log"
+                        shutil.copyfile(source, destination)
+                        destination.chmod(0o644)
         if self.server is not None:
             for vm in self.vms:
                 with contextlib.suppress(Exception):

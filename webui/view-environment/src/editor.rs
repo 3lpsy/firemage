@@ -10,6 +10,7 @@ pub fn EnvironmentEditor(
     vm: Value,
     onclose: EventHandler<()>,
     onsaved: EventHandler<()>,
+    #[props(default)] onapply: Option<EventHandler<Value>>,
 ) -> Element {
     let auth = use_auth();
     let mut rows = use_signal(|| {
@@ -41,6 +42,7 @@ pub fn EnvironmentEditor(
                 }
                 let mut spec = vm["spec"].clone();
                 spec["environment"] = Value::Object(environment);
+                if let Some(onapply) = onapply { onapply.call(spec); return; }
                 let path = format!("/v1/vms/{}", text(&vm, "id"));
                 busy.set(true); error.set(String::new());
                 spawn(async move {
@@ -71,9 +73,10 @@ pub fn EnvironmentEditor(
                     }
                     button { r#type: "button", onclick: move |_| rows.write().push((String::new(), json!(""))), "+ Add variable" }
                 }
+                if onapply.is_some() { p { class: "small muted", "Applied changes are saved when you submit the VM form." } }
                 div { class: "actions end",
                     button { r#type: "button", onclick: move |_| onclose.call(()), "Cancel" }
-                    button { r#type: "submit", class: "primary", disabled: busy(), "Save environment" }
+                    button { r#type: "submit", class: "primary", disabled: busy(), if onapply.is_some() { "Apply to draft" } else { "Save environment" } }
                 }
             }
         }

@@ -14,6 +14,11 @@ pub(crate) struct Sandbox {
 }
 
 pub(crate) async fn command(disk: &Path, guest_path: &str) -> anyhow::Result<Sandbox> {
+    firemage_wire::ensure_guest_path(guest_path)?;
+    command_request(disk, &format!("cat /{guest_path}")).await
+}
+
+pub(crate) async fn command_request(disk: &Path, request: &str) -> anyhow::Result<Sandbox> {
     let executable = host_executable(&["/usr/sbin/debugfs", "/sbin/debugfs", "/usr/bin/debugfs"])?;
     let bwrap = host_executable(&["/usr/bin/bwrap", "/bin/bwrap"])?;
     let dependencies = dependencies(&executable).await?;
@@ -27,7 +32,7 @@ pub(crate) async fn command(disk: &Path, guest_path: &str) -> anyhow::Result<San
         &disk,
         filter.as_raw_fd(),
     );
-    command.args(["-R", &format!("cat /{guest_path}"), "/input/rootfs.ext4"]);
+    command.args(["-R", request, "/input/rootfs.ext4"]);
     Ok(Sandbox {
         command,
         _filter: filter,

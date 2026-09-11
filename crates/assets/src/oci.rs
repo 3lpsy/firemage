@@ -7,6 +7,7 @@ pub(crate) async fn oci(
     size_mib: u64,
     destination: &Path,
     registry: &crate::RegistryOptions,
+    command_override: Option<&[String]>,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(
         (16..=32768).contains(&size_mib),
@@ -15,7 +16,14 @@ pub(crate) async fn oci(
     let parent = destination
         .parent()
         .context("OCI disk needs a parent directory")?;
-    let image = firemage_oci::unpack(image, parent, registry, size_mib * 1024 * 1024).await?;
+    let image = firemage_oci::unpack(
+        image,
+        parent,
+        registry,
+        size_mib * 1024 * 1024,
+        command_override,
+    )
+    .await?;
     anyhow::ensure!(
         image.has_file("/bin/sh")?,
         "OCI simple path requires /bin/sh, mount and reboot; supply a bootable rootfs for minimal images"

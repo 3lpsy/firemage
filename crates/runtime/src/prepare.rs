@@ -4,6 +4,18 @@ use firemage_wire::{Asset, VmSpec};
 use serde_json::json;
 
 impl Runtime {
+    pub(crate) async fn is_preparation_required(&self, fc: &Firecracker) -> anyhow::Result<bool> {
+        let config = fc
+            .call("GET", "/vm/config", serde_json::Value::Null)
+            .await?;
+        let kernel = config["boot-source"]["kernel_image_path"]
+            .as_str()
+            .is_some_and(|path| !path.is_empty());
+        let root = config["drives"]
+            .as_array()
+            .is_some_and(|drives| drives.iter().any(|drive| drive["is_root_device"] == true));
+        Ok(!kernel || !root)
+    }
     pub(crate) async fn prepare(
         &self,
         row: &firemage_orm::vms::Model,

@@ -44,6 +44,10 @@ pub struct VmSpec {
     #[serde(default)]
     pub security: crate::VmSecurity,
     pub name: String,
+    #[serde(default)]
+    pub terminal: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workload: Option<crate::Workload>,
     pub kernel: Option<Asset>,
     pub rootfs: Option<Asset>,
     pub initrd: Option<Asset>,
@@ -65,6 +69,8 @@ pub struct VmSpec {
     pub files: Vec<BootFile>,
     #[serde(default)]
     pub attachments: Vec<crate::AssetAttachment>,
+    #[serde(default)]
+    pub secret_attachments: Vec<crate::SecretAttachment>,
     #[serde(default)]
     pub drives: Vec<Drive>,
 }
@@ -101,7 +107,18 @@ impl VmSpec {
             self.socket.is_some() == (self.security.mode == crate::IsolationMode::External),
             "attached sockets require explicit external isolation mode; external mode requires a socket"
         );
+        anyhow::ensure!(
+            !self.terminal || self.socket.is_none(),
+            "terminal input requires a managed VM"
+        );
         crate::validate_environment(&self.environment)?;
+        if let Some(workload) = &self.workload {
+            workload.validate()?;
+            anyhow::ensure!(
+                self.socket.is_none() && matches!(self.rootfs, Some(Asset::Oci { .. })),
+                "workload settings require a managed OCI rootfs; other images must run and stop their main program in their own guest init"
+            );
+        }
         if let Some(egress) = &self.egress {
             egress.validate()?;
             anyhow::ensure!(
@@ -123,7 +140,7 @@ impl VmSpec {
             "MMDS requires a network interface; use an isolated network"
         );
         anyhow::ensure!(
-            self.files.len() + self.attachments.len() <= 256,
+            self.files.len() + self.attachments.len() + self.secret_attachments.len() <= 256,
             "at most 256 boot files are allowed"
         );
         anyhow::ensure!(
@@ -155,6 +172,13 @@ impl VmSpec {
             );
         }
         for attachment in &self.attachments {
+            attachment.validate()?;
+            anyhow::ensure!(
+                destinations.insert(&attachment.destination),
+                "duplicate guest file destination"
+            );
+        }
+        for attachment in &self.secret_attachments {
             attachment.validate()?;
             anyhow::ensure!(
                 destinations.insert(&attachment.destination),

@@ -1,11 +1,15 @@
 use crate::Runtime;
-use firemage_wire::{FILE_ASSET_MAX_BYTES, FileAsset, FileAssetUpload, VmSpec};
+use firemage_wire::{FileAsset, FileAssetUpload, VmSpec};
 use sha2::{Digest, Sha256};
 use std::io::Read;
 
 impl Runtime {
     pub(crate) fn file_catalog(&self) -> anyhow::Result<firemage_catalog_files::Directory> {
-        firemage_catalog_files::Directory::open(&self.config.asset_dir(), 0, FILE_ASSET_MAX_BYTES)
+        firemage_catalog_files::Directory::open(
+            &self.config.asset_dir(),
+            0,
+            self.config.asset_max_bytes(),
+        )
     }
     pub async fn file_assets(&self, owner: &str) -> anyhow::Result<Vec<FileAsset>> {
         let rows = firemage_queries::file_assets(&self.db, owner).await?;
@@ -46,30 +50,37 @@ impl Runtime {
         &self,
         owner: &str,
         input: FileAssetUpload,
-        bytes: Vec<u8>,
+        bytes: impl AsRef<[u8]> + Send + 'static,
     ) -> anyhow::Result<FileAsset> {
         input.validate()?;
         anyhow::ensure!(
-            bytes.len() as u64 <= FILE_ASSET_MAX_BYTES,
-            "asset exceeds 32 MiB"
+            bytes.as_ref().len() as u64 <= self.config.asset_max_bytes(),
+            "asset exceeds {} bytes",
+            self.config.asset_max_bytes()
         );
         let _guard = self.lock("file-assets").await;
         firemage_queries::user(&self.db, owner).await?;
         self.ensure_asset_alias_available(owner, &input.alias, None)
             .await?;
+        let size_bytes = bytes.as_ref().len() as i64;
+        let catalog = self.file_catalog()?;
+        let id = uuid::Uuid::new_v4().to_string();
+        let filename = id.clone();
+        let sha256 = tokio::task::spawn_blocking(move || {
+            let sha256 = hex::encode(Sha256::digest(bytes.as_ref()));
+            catalog.upload(&filename, bytes.as_ref())?;
+            anyhow::Ok(sha256)
+        })
+        .await??;
         let row = firemage_orm::file_assets::Model {
-            id: uuid::Uuid::new_v4().to_string(),
+            id: id.clone(),
             owner_id: owner.into(),
             alias: input.alias,
             filename: input.filename,
-            size_bytes: bytes.len() as i64,
-            sha256: hex::encode(Sha256::digest(&bytes)),
+            size_bytes,
+            sha256,
             created_at: firemage_queries::now(),
         };
-        let catalog = self.file_catalog()?;
-        let id = row.id.clone();
-        tokio::task::spawn_blocking(move || catalog.upload(&id, &bytes)).await??;
-        let id = row.id.clone();
         if let Err(error) = firemage_queries::insert_file_asset(&self.db, row).await {
             let _ = self.file_catalog()?.remove(&id);
             return Err(error);
@@ -113,19 +124,21 @@ impl Runtime {
             "asset is referenced by {} VM(s); detach it or delete those VM definitions first",
             row.vm_count
         );
-        self.file_catalog()?.remove(id)?;
+        // A reduced upload limit must not prevent deleting an older, larger file.
+        firemage_catalog_files::Directory::open(&self.config.asset_dir(), 0, u64::MAX)?
+            .remove(id)?;
         firemage_queries::delete_file_asset(&self.db, owner, id).await
     }
     pub async fn file_asset_content(&self, owner: &str, id: &str) -> anyhow::Result<Vec<u8>> {
         let row = firemage_queries::file_asset(&self.db, owner, id).await?;
         let catalog = self.file_catalog()?;
         let file = catalog.file(id)?;
+        let maximum = self.config.asset_max_bytes();
         tokio::task::spawn_blocking(move || {
             let mut bytes = Vec::new();
-            file.take(FILE_ASSET_MAX_BYTES + 1)
-                .read_to_end(&mut bytes)?;
+            file.take(maximum + 1).read_to_end(&mut bytes)?;
             anyhow::ensure!(
-                bytes.len() as u64 <= FILE_ASSET_MAX_BYTES
+                bytes.len() as u64 <= maximum
                     && bytes.len() as i64 == row.size_bytes
                     && hex::encode(Sha256::digest(&bytes)) == row.sha256,
                 "asset contents changed on disk; upload a new asset"

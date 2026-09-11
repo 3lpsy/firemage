@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use firemage_wire::{
-    FILE_ASSET_MAX_BYTES, FileAsset, FileAssetAlias, FileAssetUpload, ensure_asset_alias,
+    FileAsset, FileAssetAlias, FileAssetLimits, FileAssetUpload, ensure_asset_alias,
     ensure_asset_id,
 };
 
@@ -42,7 +42,8 @@ pub async fn run(command: Command, client: &firemage_client::Client) -> anyhow::
                 .append_pair("alias", &alias)
                 .append_pair("filename", filename);
             let path = format!("{}?{}", url.path(), url.query().unwrap_or_default());
-            let bytes = crate::upload::read(&file, FILE_ASSET_MAX_BYTES, true)?;
+            let limits: FileAssetLimits = client.get("/v1/assets/limits").await?;
+            let bytes = crate::upload::read(&file, limits.max_bytes, true)?;
             crate::print(&client.post_bytes::<FileAsset>(&path, bytes).await?)
         }
         Command::Alias { id, alias } => {
@@ -54,11 +55,9 @@ pub async fn run(command: Command, client: &firemage_client::Client) -> anyhow::
             )
         }
         Command::Download { id, output } => {
+            let limits: FileAssetLimits = client.get("/v1/assets/limits").await?;
             let bytes = client
-                .get_bytes(
-                    &format!("{}/content", asset_path(&id)?),
-                    FILE_ASSET_MAX_BYTES,
-                )
+                .get_bytes(&format!("{}/content", asset_path(&id)?), limits.max_bytes)
                 .await?;
             use std::{io::Write, os::unix::fs::OpenOptionsExt};
             let mut file = std::fs::OpenOptions::new()

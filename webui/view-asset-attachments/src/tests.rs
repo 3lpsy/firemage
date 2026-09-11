@@ -28,3 +28,17 @@ fn invalid_attachment_fields_never_silently_fall_back() {
     form.destination = "/workspace/../etc/config".into();
     assert!(form.attachment().is_err());
 }
+
+#[test]
+fn secret_forms_roundtrip_names_without_becoming_public_asset_references() {
+    let spec = json!({"secret_attachments":[{"secret":"credentials", "destination":"/root/.config/service/auth.json"}]});
+    let forms = from_spec(&spec);
+    assert!(attachments(&forms).unwrap().is_empty());
+    assert_eq!(forms[0].mode, "0600");
+    let secrets = secret_attachments(&forms).unwrap();
+    assert_eq!(secrets[0].secret, "credentials");
+    assert_eq!(secrets[0].mode, 0o600);
+    let mut forms = forms;
+    forms[0].destination = "/etc/../private".into();
+    assert!(secret_attachments(&forms).is_err());
+}

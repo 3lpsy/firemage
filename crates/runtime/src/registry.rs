@@ -73,13 +73,15 @@ impl Runtime {
         owner: &str,
         asset: &Asset,
         destination: &Path,
+        command_override: Option<&[String]>,
     ) -> anyhow::Result<PathBuf> {
         let registry = if let Asset::Oci { registry, .. } = asset {
             self.registry_options(owner, registry.as_ref()).await?
         } else {
             RegistryOptions::default()
         };
-        firemage_assets::materialize_with_registry(asset, destination, &registry).await
+        firemage_assets::materialize_with_registry(asset, destination, &registry, command_override)
+            .await
     }
 }
 

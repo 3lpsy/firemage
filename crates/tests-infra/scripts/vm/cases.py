@@ -12,6 +12,7 @@ import threading
 import urllib.request
 
 from .harness import wait_for
+from .guest_files import verify as verify_guest_files
 
 
 def offline(harness):
@@ -51,7 +52,29 @@ printf 'offline-ok\\n' > /firemage/output/result
     assert harness.output(vm, "payload.bin") == payload
     assert harness.output(vm, "environment-value") == secret.encode()
     assert harness.output(vm, "userdata-result") == b"userdata-ready\n"
+    verify_guest_files(harness, vm, payload)
     print("PASS offline guest: no NIC, isolated disk, file ownership/mode, secret environment, userdata ordering", flush=True)
+
+
+def serial_terminal(harness):
+    script = """set -eu
+printf 'FIREMAGE_TERMINAL_READY\\n'
+IFS= read -r line < /dev/ttyS0
+[ "$line" = browser-input ]
+printf '%s\\n' "$line" > /firemage/output/result
+"""
+    vm = harness.define("serial-terminal", script, terminal=True)
+    harness.action(vm, "start")
+    wait_for("serial terminal readiness", lambda: "FIREMAGE_TERMINAL_READY" in harness.console(vm))
+    assert harness.request("GET", f"/v1/vms/{vm}/terminal")["state"] == "available"
+    harness.request("POST", f"/v1/vms/{vm}/terminal", {"input": "browser-input\n"})
+    harness.state(vm, "stopped")
+    assert harness.output(vm, "result") == b"browser-input\n"
+    serial = harness.request("GET", f"/v1/vms/{vm}/logs?stream=serial")
+    api = harness.request("GET", f"/v1/vms/{vm}/logs?stream=firecracker")
+    assert b"FIREMAGE_TERMINAL_READY" in base64.b64decode(serial["base64"])
+    assert b"FIREMAGE_TERMINAL_READY" not in base64.b64decode(api["base64"])
+    print("PASS ttyS0 terminal: guest input and serial/API stream separation", flush=True)
 
 
 class UnixConnection(http.client.HTTPConnection):
@@ -112,7 +135,7 @@ class Endpoint(http.server.BaseHTTPRequestHandler):
 
 
 def host_only(harness):
-    suffix = secrets.randbelow(200) + 20
+    suffix = secrets.randbelow(100) + 20
     allowed, denied = f"198.18.{suffix}.1", f"198.18.{suffix}.2"
     gateway, guest = f"198.19.{suffix}.1", f"198.19.{suffix}.2"
     interface = f"fmt{os.getpid():x}"

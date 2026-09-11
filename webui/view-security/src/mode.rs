@@ -26,7 +26,7 @@ pub fn IsolationMode(mut value: Signal<String>) -> Element {
         if value() == "trusted" {
             p { class: "small muted", "Requires server opt-in. Firemage will run this VM without jailer isolation or managed host limits." }
         } else {
-            p { class: "small muted", "Requires a configured jailer and reserved host identity range. Adjust host limits in the Security tab after creation." }
+            p { class: "small muted", "Requires a configured jailer and reserved host identity range. Adjust host limits in Security limits." }
         }
     }
 }

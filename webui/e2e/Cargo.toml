@@ -25,3 +25,4 @@ jsonwebtoken = "9"
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
 futures-util = "0.3"
+firemage-snapshots = { path = "../../crates/snapshots" }

@@ -43,14 +43,22 @@ pub async fn get_vm(
         owned_vm(&app, &identity, &id).await?,
     )?))
 }
+#[derive(Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct DeleteQuery {
+    delete_snapshots: bool,
+}
 pub async fn delete_vm(
     identity: Identity,
     State(app): State<App>,
     Path(id): Path<String>,
+    Query(query): Query<DeleteQuery>,
 ) -> Result<StatusCode> {
     identity.ensure_admin()?;
     let owner = owned_vm(&app, &identity, &id).await?.owner_id;
-    app.runtime.delete(&owner, &id).await?;
+    app.runtime
+        .delete_with_snapshots(&owner, &id, query.delete_snapshots)
+        .await?;
     app.record(&identity, "vm.delete", &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -106,28 +114,6 @@ pub async fn output(
         json!({"path":query.path,"base64":base64::engine::general_purpose::STANDARD.encode(bytes)}),
     ))
 }
-pub async fn logs(
-    identity: Identity,
-    State(app): State<App>,
-    Path(id): Path<String>,
-) -> Result<Json<Value>> {
-    owned_vm(&app, &identity, &id).await?;
-    use tokio::io::{AsyncReadExt, AsyncSeekExt};
-    let mut file = tokio::fs::File::open(app.runtime.directory(&id).join("console.log"))
-        .await
-        .map_err(anyhow::Error::from)?;
-    let len = file.metadata().await.map_err(anyhow::Error::from)?.len();
-    file.seek(std::io::SeekFrom::Start(len.saturating_sub(1024 * 1024)))
-        .await
-        .map_err(anyhow::Error::from)?;
-    let mut bytes = Vec::new();
-    file.take(1024 * 1024)
-        .read_to_end(&mut bytes)
-        .await
-        .map_err(anyhow::Error::from)?;
-    Ok(Json(json!({"text":String::from_utf8_lossy(&bytes)})))
-}
-
 pub async fn update_vm(
     identity: Identity,
     State(app): State<App>,

@@ -1,20 +1,30 @@
-//! VM definition form with an equivalent full TOML editor.
+//! Shared full-page VM definition form and draft-only section editors.
+mod draft;
+mod extra_editor;
 mod fields;
+mod guided;
 mod kernel;
+mod machine;
+mod network;
 mod registry;
 mod registry_fields;
+mod sections;
 mod spec;
 mod state;
+mod storage;
+mod subeditors;
+mod workload;
 use dioxus::prelude::*;
 use firemage_webui_component_controls::*;
-use firemage_webui_provider_api::request;
+use firemage_webui_provider_api::{request, text};
 use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
+
 #[component]
 pub fn VmEditor(
     #[props(default)] vm: Value,
     onclose: EventHandler<()>,
-    onsaved: EventHandler<()>,
+    onsaved: EventHandler<String>,
 ) -> Element {
     let auth = use_auth();
     let existing = vm["id"].as_str().map(str::to_owned);
@@ -25,130 +35,101 @@ pub fn VmEditor(
     let mut toml_text = use_signal(|| spec::to_toml(&initial).unwrap_or_default());
     let mut error = use_signal(String::new);
     let mut busy = use_signal(|| false);
-    let make_spec = move || {
-        let generated = fields.form().spec()?;
-        let mut value = spec::merge_guided(&base(), generated);
-        value["attachments"] = serde_json::to_value(
-            firemage_webui_view_asset_attachments::attachments(&fields.attachments.read())?,
-        )
-        .map_err(|e| e.to_string())?;
-        Ok::<_, String>(value)
-    };
+    let mut subeditor = use_signal(|| None::<(String, Value)>);
+    use_effect(move || {
+        if !error().is_empty()
+            && let Some(alert) = web_sys::window()
+                .and_then(|window| window.document())
+                .and_then(|document| {
+                    document
+                        .query_selector(".vm-editor-page [role='alert']")
+                        .ok()
+                        .flatten()
+                })
+        {
+            alert.scroll_into_view();
+        }
+    });
     let is_existing = existing.is_some();
+    let vm_id = existing.clone().unwrap_or_default();
+    let onconfigure = move |kind| match fields.value(&base(), true) {
+        Ok(value) => {
+            subeditor.set(Some((kind, value)));
+            error.set(String::new());
+        }
+        Err(message) => error.set(message),
+    };
     rsx! {
-        Modal {
-            title: if is_existing { "Configure virtual machine" } else { "Create virtual machine" },
-            onclose: move |_| { if !busy() { onclose.call(()); } },
-            form {
-                class: "modal-form",
+        section { class: "vm-editor-page",
+            div { class: "vm-page-breadcrumb",
+                a { href: "#vms", "Virtual machines" } span { "/" }
+                if is_existing { a { href: "#vms/{vm_id}", "{text(&vm[\"spec\"], \"name\")}" } span { "/" } }
+                span { if is_existing { "Edit" } else { "Create" } }
+            }
+            div { class: "heading", h1 { if is_existing { "Edit virtual machine" } else { "Create virtual machine" } } }
+            form { class: "vm-editor-form", novalidate: true,
                 onsubmit: move |event| {
                     event.prevent_default();
-                    if busy() {
-                        return;
-                    }
-                    let spec = if advanced() {
-                        toml::from_str::<Value>(&toml_text()).map_err(|e| e.to_string())
-                    } else {
-                        make_spec()
+                    if busy() { return; }
+                    let value = if advanced() { toml::from_str::<Value>(&toml_text()).map_err(|e| e.to_string()) } else { fields.value(&base(), false) };
+                    let value = match value.and_then(|value| draft::validate(value, &initial)) {
+                        Ok(value) => value, Err(message) => { error.set(message); return; }
                     };
-                    let spec = match spec {
-                        Ok(s) => s,
-                        Err(e) => {
-                            error.set(e);
-                            return;
-                        }
-                    };
-                    let path = existing
-                        .as_ref()
-                        .map(|id| format!("/v1/vms/{id}"))
-                        .unwrap_or("/v1/vms".into());
-                    busy.set(true);
-                    error.set(String::new());
+                    let path = existing.as_ref().map(|id| format!("/v1/vms/{id}")).unwrap_or("/v1/vms".into());
+                    busy.set(true); error.set(String::new());
                     spawn(async move {
-                        match request(
-                                if is_existing { "PUT" } else { "POST" },
-                                &path,
-                                Some(spec),
-                                &auth.csrf(),
-                            )
-                            .await
-                        {
-                            Ok(_) => onsaved.call(()),
-                            Err(e) => error.set(e),
+                        match request(if is_existing { "PUT" } else { "POST" }, &path, Some(value), &auth.csrf()).await {
+                            Ok(saved) => onsaved.call(text(&saved, "id")),
+                            Err(message) => error.set(message),
                         }
                         busy.set(false);
                     });
                 },
-                div { class: "modal-form-body",
-                    div { class: "tabs",
-                        button {
-                            r#type: "button",
-                            class: if !advanced() { "active" } else { "" },
-                            disabled: busy(),
-                            onclick: move |_| {
-                                if advanced() {
-                                    match toml::from_str::<firemage_wire::VmSpec>(&toml_text()).map_err(|e| e.to_string()).and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string())) {
-                                        Ok(value) => { fields.load(&value); base.set(value); advanced.set(false); error.set(String::new()); },
-                                        Err(e) => error.set(e.to_string()),
-                                    }
+                div { class: "tabs vm-editor-tabs",
+                    button { r#type: "button", class: if !advanced() { "active" } else { "" }, disabled: busy(),
+                        onclick: move |_| {
+                            if advanced() {
+                                match toml::from_str::<firemage_wire::VmSpec>(&toml_text()).map_err(|e| e.to_string()).and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string())) {
+                                    Ok(value) => { fields.load(&value); base.set(value); advanced.set(false); error.set(String::new()); }
+                                    Err(message) => error.set(message),
                                 }
-                            },
-                            "Guided setup"
-                        }
-                        button {
-                            r#type: "button",
-                            class: if advanced() { "active" } else { "" },
-                            onclick: move |_| {
-                                if !advanced() {
-                                    match fields.form().draft().and_then(|generated| {
-                                        let mut value = spec::merge_guided(&base(), generated);
-                                        value["attachments"] = serde_json::to_value(firemage_webui_view_asset_attachments::attachments(&fields.attachments.read())?).map_err(|e| e.to_string())?;
-                                        spec::to_toml(&value)
-                                    }) {
-                                        Ok(s) => toml_text.set(s),
-                                        Err(message) => { error.set(message); return; }
-                                    }
-                                }
-                                advanced.set(true);
-                            },
-                            "Full TOML"
-                        }
+                            }
+                        }, "Guided setup"
                     }
-                    Notice { message: error() }
+                    button { r#type: "button", class: if advanced() { "active" } else { "" }, disabled: busy(),
+                        onclick: move |_| {
+                            if !advanced() {
+                                match fields.value(&base(), true).and_then(|value| spec::to_toml(&value)) {
+                                    Ok(text) => { toml_text.set(text); advanced.set(true); error.set(String::new()); }
+                                    Err(message) => error.set(message),
+                                }
+                            }
+                        }, "Full TOML"
+                    }
+                }
+                Notice { message: error() }
+                fieldset { class: "vm-editor-body", disabled: busy(),
                     if advanced() {
-                        Editor {
-                            label: "VM configuration",
-                            id: "vm-toml",
-                            value: toml_text,
-                            rows: 20,
-                        }
-                        p { class: "muted small",
-                            "All VM settings are available here: assets, registry access, drives, network, userdata, boot files, metadata, host isolation, process limits, and external sockets. Isolation mode is fixed at creation."
-                        }
+                        Editor { label: "VM configuration", id: "vm-toml", value: toml_text, rows: 30 }
                     } else {
-                        fields::Guided {
-                            fields,
-                            existing: is_existing,
+                        guided::Guided { fields, base, existing: is_existing, vm_id, onconfigure }
+                    }
+                }
+                div { class: "vm-editor-footer",
+                    p { class: "small muted", if is_existing { "Changes apply on the next boot." } else { "Creates a definition. Start the VM separately." } }
+                    div { class: "actions end",
+                        button { r#type: "button", disabled: busy(), onclick: move |_| onclose.call(()), "Cancel" }
+                        button { class: "primary", r#type: "submit", disabled: busy(),
+                            if busy() { "Saving…" } else if is_existing { "Save configuration" } else { "Create VM" }
                         }
                     }
                 }
-                p { class: "small muted", if is_existing { "Changes apply on the next boot." } else { "Creates a VM definition. Start the VM separately." } }
-                div { class: "actions end",
-                    button { r#type: "button", disabled: busy(), onclick: move | _ | onclose
-                                                        .call(()), "Cancel" }
-                    button {
-                        class: "primary",
-                        r#type: "submit",
-                        disabled: busy(),
-                        if busy() {
-                            "Saving…"
-                        } else if is_existing {
-                            "Save configuration"
-                        } else {
-                            "Create VM"
-                        }
-                    }
-                }
+            }
+        }
+        if let Some((kind, value)) = subeditor() {
+            subeditors::Subeditors { kind: kind.clone(), spec: value,
+                onclose: move |_| subeditor.set(None),
+                onapply: move |value: Value| { fields.apply_section(&kind, &value); base.set(value); subeditor.set(None); },
             }
         }
     }

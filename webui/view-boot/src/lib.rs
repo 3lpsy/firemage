@@ -1,5 +1,6 @@
 //! Copied boot files and post-setup userdata for a selected VM.
 mod editor;
+pub use editor::BootEditor;
 mod files;
 use dioxus::prelude::*;
 use firemage_webui_component_controls::*;

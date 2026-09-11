@@ -62,3 +62,27 @@ async fn asset_library_and_vm_attachments() -> anyhow::Result<()> {
     let result = Harness::guarded(journeys::assets(&harness)).await;
     harness.complete(result).await
 }
+
+#[tokio::test]
+#[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
+async fn vm_create_and_edit_complete_configuration() -> anyhow::Result<()> {
+    let harness = Harness::new("vm-form").await?;
+    let result = Harness::guarded(journeys::vm_form(&harness)).await;
+    harness.complete(result).await
+}
+
+#[tokio::test]
+#[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
+async fn vm_export_import_and_duplicate() -> anyhow::Result<()> {
+    let harness = Harness::new("vm-transfer").await?;
+    let result = Harness::guarded(journeys::transfer(&harness)).await;
+    harness.complete(result).await
+}
+
+#[tokio::test]
+#[ignore = "requires the built UI, Firemage binary, Chromium and chromedriver; run just test-e2e"]
+async fn snapshot_catalog_and_guest_files() -> anyhow::Result<()> {
+    let harness = Harness::new("snapshots").await?;
+    let result = Harness::guarded(journeys::snapshots(&harness)).await;
+    harness.complete(result).await
+}

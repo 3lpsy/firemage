@@ -69,7 +69,7 @@ class Upstream(http.server.BaseHTTPRequestHandler):
 
 
 def isolated_egress(harness):
-    suffix = secrets.randbelow(200) + 20
+    suffix = secrets.randbelow(100) + 120
     target, gateway, guest = f"198.18.{suffix}.1", f"198.19.{suffix}.1", f"198.19.{suffix}.2"
     interface = f"fme{os.getpid():x}"
     servers, threads = [], []
@@ -137,7 +137,7 @@ def isolated_egress(harness):
         assert tls.authorized and all(tls.authorized), "TLS requests did not receive injected credentials"
         assert set(upstream.seen) == upstream.targets, "HTTP, TLS and TCP did not all traverse the upstream proxy"
         print("PASS isolated egress: HTTP/TLS rules, credential injection, upstream auth, binary tunnel, host bypass blocked", flush=True)
-        recovery(harness, target, gateway, guest, network, policy, plain, tls, host_service.server_address[1])
+        recovery(harness, target, gateway, network, policy, plain, tls, host_service.server_address[1])
     finally:
         for server in servers:
             server.shutdown()

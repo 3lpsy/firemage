@@ -14,3 +14,7 @@ toml = { workspace = true }
 firemage-wire = { path = "../../crates/wire" }
 firemage-webui-view-security = { path = "../view-security" }
 firemage-webui-view-asset-attachments = { path = "../view-asset-attachments" }
+firemage-webui-view-egress = { path = "../view-egress" }
+firemage-webui-view-environment = { path = "../view-environment" }
+firemage-webui-view-boot = { path = "../view-boot" }
+web-sys = { workspace = true, features = ["Window", "Document", "Element"] }

@@ -1,0 +1,12 @@
+[package]
+name = "firemage-webui-view-guest-files"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-component-controls = { path = "../component-controls" }

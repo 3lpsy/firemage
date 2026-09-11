@@ -18,12 +18,14 @@ impl Runtime {
             "stop VM before editing its configuration"
         );
         let previous: VmSpec = serde_json::from_str(&row.spec)?;
+        self.ensure_workload_init(id, &spec)?;
         anyhow::ensure!(
             previous.socket == spec.socket && previous.security.mode == spec.security.mode,
             "attached socket or isolation mode cannot be changed; define a new VM"
         );
         if let Some(network) = &spec.network {
-            firemage_queries::network(&self.db, owner, &network.network).await?;
+            self.ensure_network_address_available(owner, network, Some(id))
+                .await?;
         }
         if self.directory(id).join("rootfs.ext4").try_exists()? {
             anyhow::ensure!(

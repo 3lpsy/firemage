@@ -9,7 +9,12 @@ public_url = "http://127.0.0.1:8080"
 # Persistent host storage. The database defaults to firemage.db inside data_dir.
 data_dir = "/var/lib/firemage"
 kernel_dir = "/var/lib/firemage/kernels"
-asset_dir = "/var/lib/firemage/assets/files"
+asset_dir = "/var/lib/firemage/files"
+snapshot_dir = "/var/lib/firemage/snapshots"
+# Maximum file asset size in bytes, default 1 GiB. Restart after changing.
+asset_max_bytes = 1073741824
+# Maximum compressed and expanded snapshot size, default 64 GiB.
+snapshot_max_bytes = 68719476736
 # database = "sqlite:///var/lib/firemage/firemage.db?mode=rwc"
 
 # Other local disk images and external sockets require explicit directory grants.

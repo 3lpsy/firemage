@@ -141,6 +141,7 @@ async fn native_import_keeps_guest_metadata_inside_private_staging() {
             ..Default::default()
         },
         16 * 1024 * 1024,
+        None,
     )
     .await
     .unwrap();

@@ -2,7 +2,7 @@
 """Run real Firecracker guests through a released Firemage HTTPS server."""
 import signal
 
-from vm.cases import host_only, lifecycle, offline
+from vm.cases import host_only, lifecycle, offline, serial_terminal
 from vm.harness import Harness
 from vm.egress import isolated_egress
 from vm.security import isolated_processes
@@ -20,6 +20,7 @@ def main():
         offline(harness)
         private_oci(harness)
         lifecycle(harness)
+        serial_terminal(harness)
         host_only(harness)
         isolated_egress(harness)
     print("Real Firecracker VM acceptance passed", flush=True)

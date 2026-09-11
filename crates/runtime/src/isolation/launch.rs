@@ -35,6 +35,9 @@ impl Runtime {
         }
         tokio::fs::create_dir_all(&root).await?;
         super::own(&root, 0, 0o700)?;
+        let log = root.join("firecracker.log");
+        std::fs::hard_link(self.directory(&row.id).join("firecracker.log"), &log)?;
+        super::own(&log, uid, 0o600)?;
         self.cleanup_cgroup(row).await?;
         anyhow::ensure!(
             Path::new("/sys/fs/cgroup/cgroup.controllers").is_file(),
@@ -95,7 +98,13 @@ impl Runtime {
                 "--resource-limit",
                 &format!("fsize={file_limit}"),
             ])
-            .args(["--", "--api-sock", "/api.sock"]);
+            .args([
+                "--",
+                "--api-sock",
+                "/api.sock",
+                "--log-path",
+                "/firecracker.log",
+            ]);
         Ok(command)
     }
     pub(crate) async fn secure_jail(&self, row: &firemage_orm::vms::Model) -> anyhow::Result<()> {

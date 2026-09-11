@@ -105,7 +105,9 @@ fn size_label(bytes: u64) -> String {
         format!("{bytes} B")
     } else if bytes < 1_048_576 {
         format!("{:.1} KiB", bytes as f64 / 1024.0)
-    } else {
+    } else if bytes < 1_073_741_824 {
         format!("{:.1} MiB", bytes as f64 / 1_048_576.0)
+    } else {
+        format!("{:.1} GiB", bytes as f64 / 1_073_741_824.0)
     }
 }

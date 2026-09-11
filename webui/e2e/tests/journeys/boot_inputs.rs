@@ -1,7 +1,7 @@
 use anyhow::Result;
 use firemage_webui_e2e::Harness;
 use std::io::Write;
-use thirtyfour::{components::SelectElement, prelude::*};
+use thirtyfour::prelude::*;
 
 pub async fn boot_inputs(h: &Harness) -> Result<()> {
     h.button("Environment").await?;
@@ -12,9 +12,7 @@ pub async fn boot_inputs(h: &Harness) -> Result<()> {
     h.button("+ Add variable").await?;
     h.fill("environment-1-name", "SERVICE_TOKEN").await?;
     h.radio("environment-1-mode", "Sensitive secret").await?;
-    SelectElement::new(&h.element(By::Id("environment-1-secret")).await?)
-        .await?
-        .select_by_value("cloud-token")
+    h.select_value("environment-1-secret", "cloud-token")
         .await?;
     h.screenshot("environment-editor").await?;
     h.modal_button("Save environment").await?;

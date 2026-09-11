@@ -10,6 +10,11 @@ fn form() -> Form {
         source: "local".into(),
         rootfs: "/assets/root.ext4".into(),
         rootfs_sha: String::new(),
+        rootfs_size: "2048".into(),
+        workload_mode: "one-shot".into(),
+        command: String::new(),
+        terminal: false,
+        metadata: String::new(),
         registry: Default::default(),
         vcpus: "2".into(),
         memory: "512".into(),
@@ -57,6 +62,36 @@ fn full_toml_preserves_nested_assets_and_skips_absent_options() {
     assert_eq!(decoded["kernel"], original["kernel"]);
     assert_eq!(decoded["files"], original["files"]);
     assert!(decoded.get("metadata").is_none());
+}
+
+#[test]
+fn full_toml_rejects_unrepresentable_metadata_without_changing_the_draft() {
+    for metadata in [
+        json!({"optional": null, "job": "review"}),
+        json!({"nested": {"optional": null}}),
+        json!({"values": ["review", null]}),
+    ] {
+        let mut input = form();
+        input.metadata = metadata.to_string();
+        let original = input.draft().unwrap();
+        let before = original.clone();
+        let error = to_toml(&original).unwrap_err();
+        assert!(error.contains("Metadata contains values TOML cannot represent"));
+        assert!(error.contains("Guided setup"));
+        assert_eq!(original["metadata"], metadata);
+        assert_eq!(original, before);
+    }
+}
+
+#[test]
+fn full_toml_preserves_representable_json_metadata() {
+    let mut input = form();
+    let metadata =
+        json!({"job":"review", "options":{"enabled":false,"attempts":0}, "files":["a", "b"]});
+    input.metadata = metadata.to_string();
+    let text = to_toml(&input.draft().unwrap()).unwrap();
+    let restored: Value = toml::from_str(&text).unwrap();
+    assert_eq!(restored["metadata"], metadata);
 }
 #[test]
 fn guided_resources_reject_invalid_capacity() {
@@ -180,6 +215,7 @@ fn guided_edits_preserve_hidden_settings_and_remove_cleared_fields() {
     input.rootfs = "alpine:3.22".into();
     input.registry = super::registry::RegistryForm::from_value(&base["rootfs"]["registry"]);
     input.memory = "1024".into();
+    input.rootfs_size = "4096".into();
     let updated = super::spec::merge_guided(&base, input.spec().unwrap());
     for key in [
         "attachments",
@@ -218,4 +254,80 @@ fn guided_external_edits_preserve_boot_sources() {
     let updated = super::spec::merge_guided(&base, input.spec().unwrap());
     assert_eq!(updated["kernel"], base["kernel"]);
     assert_eq!(updated["rootfs"], base["rootfs"]);
+}
+
+#[test]
+fn complete_guided_definition_preserves_all_sections_through_toml() {
+    let mut input = form();
+    input.source = "oci".into();
+    input.rootfs = "alpine:latest".into();
+    input.rootfs_size = "8192".into();
+    input.workload_mode = "keep-alive".into();
+    input.command = r#"["/bin/sh", "-lc", "printf '%s\\n' 'hello world'"]"#.into();
+    input.terminal = true;
+    input.network = "isolated".into();
+    input.address = "10.77.0.2".into();
+    input.metadata = r#"{"job":"review"}"#.into();
+    input.userdata = "echo setup".into();
+    let base = json!({
+        "environment":{"MODEL_KEY":{"secret":"api-key"}},
+        "files":[{"path":"instructions","content":"review this","encoding":"utf8","mode":420}],
+        "attachments":[{"asset_id":"00000000-0000-0000-0000-000000000001","destination":"/workspace/source.tar","mode":420}],
+        "secret_attachments":[{"secret":"config","destination":"/etc/reviewer/config","mode":384}],
+        "initrd":{"kind":"local","path":"/assets/initrd"},
+        "drives":[{"id":"data","asset":{"kind":"local","path":"/assets/data"},"read_only":true}],
+        "security":{"mode":"jailed","pids_max":200}
+    });
+    let value = super::spec::merge_guided(&base, input.spec().unwrap());
+    let validated = super::draft::validate(value, &Value::Null).unwrap();
+    let restored: firemage_wire::VmSpec = toml::from_str(&to_toml(&validated).unwrap()).unwrap();
+    assert!(restored.terminal);
+    assert_eq!(restored.metadata.unwrap()["job"], "review");
+    assert_eq!(
+        restored.workload.unwrap().command.unwrap()[2],
+        "printf '%s\\n' 'hello world'"
+    );
+    assert_eq!(validated["rootfs"]["size_mib"], 8192);
+    assert_eq!(validated["environment"], base["environment"]);
+    assert_eq!(validated["files"][0]["content"], "review this");
+    assert_eq!(
+        validated["attachments"][0]["destination"],
+        "/workspace/source.tar"
+    );
+    assert_eq!(validated["secret_attachments"][0]["secret"], "config");
+    assert_eq!(validated["initrd"]["path"], "/assets/initrd");
+    assert_eq!(validated["drives"][0]["read_only"], true);
+    assert_eq!(restored.security.pids_max, 200);
+}
+
+#[test]
+fn workload_and_metadata_validate_before_saving_and_mode_changes_clear_workload() {
+    for command in ["not JSON", "{}", "[]", "[1]", r#"[""]"#] {
+        let mut input = form();
+        input.source = "oci".into();
+        input.rootfs = "alpine".into();
+        input.command = command.into();
+        assert!(input.spec().is_err(), "accepted {command}");
+    }
+    let mut input = form();
+    input.metadata = "invalid JSON".into();
+    assert!(input.spec().is_err());
+    let base = json!({"workload":{"mode":"keep-alive","command":["sh"]}});
+    let changed = super::spec::merge_guided(&base, form().spec().unwrap());
+    assert!(changed.get("workload").is_none());
+}
+
+#[test]
+fn edit_validation_preserves_immutable_runtime_and_isolation() {
+    let original = super::draft::validate(form().spec().unwrap(), &Value::Null).unwrap();
+    let mut changed = original.clone();
+    changed["security"]["mode"] = json!("trusted");
+    assert!(
+        super::draft::validate(changed, &original)
+            .unwrap_err()
+            .contains("fixed at creation")
+    );
+    let mut changed = original.clone();
+    changed["memory_mib"] = json!(1024);
+    super::draft::validate(changed, &original).unwrap();
 }

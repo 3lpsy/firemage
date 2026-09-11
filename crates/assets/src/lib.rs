@@ -25,3 +25,6 @@ pub async fn command(program: &str, args: &[&str]) -> anyhow::Result<()> {
     );
     Ok(())
 }
+
+mod guest_files;
+pub use guest_files::*;

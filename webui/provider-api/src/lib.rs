@@ -33,6 +33,25 @@ pub async fn upload_post(path: &str, bytes: &[u8], csrf: &str) -> Result<Value, 
     upload_bytes("POST", path, bytes, csrf).await
 }
 
+/// Send a browser-backed file without copying its bytes into WASM memory.
+pub async fn upload_blob(path: &str, blob: &web_sys::Blob, csrf: &str) -> Result<Value, String> {
+    if !path.starts_with("/v1/") || path.starts_with("//") {
+        return Err("Invalid API path".into());
+    }
+    let response = gloo_net::http::RequestBuilder::new(path)
+        .method(gloo_net::http::Method::POST)
+        .credentials(web_sys::RequestCredentials::SameOrigin)
+        .header("Accept", "application/json")
+        .header("Content-Type", "application/octet-stream")
+        .header("X-CSRF-Token", csrf)
+        .body(blob.clone())
+        .map_err(|error| error.to_string())?
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    response_value(response, path).await
+}
+
 async fn upload_bytes(method: &str, path: &str, bytes: &[u8], csrf: &str) -> Result<Value, String> {
     if !path.starts_with("/v1/") || path.starts_with("//") {
         return Err("Invalid API path".into());

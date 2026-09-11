@@ -19,7 +19,15 @@ pub async fn resources(h: &Harness) -> Result<()> {
     h.button("+ Create network").await?;
     h.fill("network-name", "harness-net").await?;
     h.fill("network-subnet", "172.29.0.0/24").await?;
-    h.fill("network-gateway", "172.29.0.1").await?;
+    anyhow::ensure!(
+        h.element(By::Id("network-gateway"))
+            .await?
+            .value()
+            .await?
+            .as_deref()
+            == Some("172.29.0.1"),
+        "gateway did not follow the entered subnet"
+    );
     h.radio("network-policy", "Specific host IP").await?;
     h.fill("network-allowed", "192.0.2.10").await?;
     h.modal_button("Save network").await?;
@@ -63,19 +71,48 @@ pub async fn resources(h: &Harness) -> Result<()> {
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
     h.fill("vm-cpus", "2").await?;
     h.fill("vm-memory", "512").await?;
+    h.button("Boot inputs").await?;
     h.fill("vm-userdata", "hello from the browser").await?;
+    h.button("Network").await?;
     anyhow::ensure!(
         h.value("vm-network").await?.is_empty(),
         "new VMs must default to no networking"
     );
     h.radio("vm-isolation", "Trusted host process").await?;
-    h.modal_button("Create VM").await?;
+    h.button("Create VM").await?;
     h.text("trusted VMs are disabled by host policy").await?;
     h.radio("vm-isolation", "Jailed").await?;
     h.screenshot("vm-create").await?;
-    h.modal_button("Create VM").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
-    h.button("offline-harness").await?;
+    h.button("Create VM").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
+    h.navigate("Virtual machines").await?;
+    h.element(By::Css(".vm-row td:nth-child(2)"))
+        .await?
+        .click()
+        .await?;
+    h.element(By::Css(".vm-detail")).await?;
+    h.element(By::Css("button[aria-label='Close VM details']"))
+        .await?
+        .click()
+        .await?;
+    h.absent(By::Css(".vm-detail")).await?;
+    for key in [Key::Enter, Key::Space] {
+        h.element(By::Css(".vm-row .table-link"))
+            .await?
+            .send_keys(key)
+            .await?;
+        h.element(By::Css(".vm-row .table-link[aria-expanded='true']"))
+            .await?;
+        h.element(By::Css("button[aria-label='Close VM details']"))
+            .await?
+            .click()
+            .await?;
+        h.absent(By::Css(".vm-detail")).await?;
+    }
+    h.element(By::Css(".vm-row-chevron svg"))
+        .await?
+        .click()
+        .await?;
     h.text("No network").await?;
     super::security::limits(h).await?;
     h.button("Overview").await?;
@@ -86,8 +123,9 @@ pub async fn resources(h: &Harness) -> Result<()> {
     fields.insert("name".into(), "offline-edited".into());
     fields.insert("memory_mib".into(), 768.into());
     h.fill("vm-toml", &toml::to_string_pretty(&spec)?).await?;
-    h.modal_button("Save configuration").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Save configuration").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
+    h.navigate("Virtual machines").await?;
     h.button("offline-edited").await?;
     h.text("768 MiB").await?;
     let vms = h.api("/v1/vms").await?;
@@ -96,6 +134,19 @@ pub async fn resources(h: &Harness) -> Result<()> {
             && vms[0]["spec"]["userdata"] == "hello from the browser",
         "VM editing lost offline/userdata configuration"
     );
+    let vm_id = vms[0]["id"].as_str().context("VM id")?;
+    super::serial::serial(h, vm_id, "sidebar-terminal").await?;
+    h.element(By::Css(format!("a[href='#vms/{vm_id}']")))
+        .await?
+        .click()
+        .await?;
+    h.element(By::Css(".vm-full-page")).await?;
+    super::serial::serial(h, vm_id, "fullpage-terminal").await?;
+    h.element(By::Css("button[aria-label='Close VM details']"))
+        .await?
+        .click()
+        .await?;
+    h.button("offline-edited").await?;
     h.button("Start").await?;
     h.element(By::Css(".vm-detail .status-failed")).await?;
     h.element(By::Css(".vm-detail [role='alert']")).await?;

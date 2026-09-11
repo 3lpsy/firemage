@@ -17,3 +17,6 @@ pub use kernels::*;
 
 mod file_assets;
 pub use file_assets::*;
+
+mod snapshots;
+pub use snapshots::*;

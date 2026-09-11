@@ -6,5 +6,7 @@ VM lifecycle, assets, seed inputs, and managed guest networking.
 - Resolves owner-scoped secrets for boot inputs, outbound proxy requests and OCI pulls; registry dependencies are checked on define/edit/prepare and stored VM documents contain references only.
 
 - Defaults to jailed Firecracker with per-VM identities, cgroup v2 limits and confined assets; trusted and external modes require host policy.
-- Verifies jail identity during recovery and uses an isolated helper to extract guest output. Typed snapshots remain in the VM's managed directory in every mode.
+- Verifies jail identity during recovery and uses an isolated helper to extract guest output. Portable snapshots live in the configured snapshot library and include private disk copies. Uploaded snapshots require administrator trust before restore.
 - Kernel catalog references use stable filenames; aliases are display labels. Catalog changes and VM references share a lifecycle lock.
+
+- Guest file browsing requires a stopped VM and holds its lifecycle lock while reading the root disk; downloads use private temporary files.

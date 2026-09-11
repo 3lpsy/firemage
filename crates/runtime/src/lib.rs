@@ -1,3 +1,4 @@
+mod addressing;
 mod lifecycle;
 mod manager;
 mod network;
@@ -6,10 +7,13 @@ mod prepare;
 mod process;
 pub use manager::*;
 
+mod duplicate;
 mod edit;
+mod vm_config;
 
 mod egress;
 mod seed;
+mod workload;
 
 mod snapshot;
 
@@ -21,3 +25,15 @@ mod registry;
 mod kernels;
 
 mod file_assets;
+
+mod terminal;
+
+mod logs;
+
+mod secret_attachments;
+
+mod guest_files;
+
+mod snapshot_library;
+
+mod stopped;

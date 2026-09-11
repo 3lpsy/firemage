@@ -2,10 +2,14 @@ mod auth;
 mod network;
 mod registry;
 mod vm;
+mod vm_config;
+mod workload;
 pub use auth::*;
 pub use network::*;
 pub use registry::*;
 pub use vm::*;
+pub use vm_config::*;
+pub use workload::*;
 
 pub fn ensure_name(value: &str) -> anyhow::Result<()> {
     anyhow::ensure!(
@@ -37,3 +41,15 @@ pub use kernel::*;
 
 mod file_asset;
 pub use file_asset::*;
+
+mod terminal;
+pub use terminal::*;
+
+mod secret_attachment;
+pub use secret_attachment::*;
+
+mod guest_file;
+pub use guest_file::*;
+
+mod snapshot;
+pub use snapshot::*;

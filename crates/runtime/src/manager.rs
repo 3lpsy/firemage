@@ -49,7 +49,8 @@ impl Runtime {
         let _network_guard = self.lock("networks").await;
         self.validate_dependencies(owner, &spec).await?;
         if let Some(net) = &spec.network {
-            firemage_queries::network(&self.db, owner, &net.network).await?;
+            self.ensure_network_address_available(owner, net, None)
+                .await?;
         }
         let socket = if let Some(socket) = &spec.socket {
             anyhow::ensure!(
@@ -153,6 +154,14 @@ impl Runtime {
         firemage_queries::set_vm_state(&self.db, row, state, error, pid).await
     }
     pub async fn delete(&self, owner: &str, id: &str) -> anyhow::Result<()> {
+        self.delete_with_snapshots(owner, id, false).await
+    }
+    pub async fn delete_with_snapshots(
+        &self,
+        owner: &str,
+        id: &str,
+        snapshots: bool,
+    ) -> anyhow::Result<()> {
         let _guard = self.lock(id).await;
         let row = self
             .refresh(firemage_queries::vm(&self.db, owner, id).await?)
@@ -162,6 +171,7 @@ impl Runtime {
                 && !self.children.lock().await.contains_key(id),
             "stop VM before deleting it"
         );
+        self.ensure_stopped_process(&row).await?;
         self.unregister_egress(id).await;
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
         if spec.network.is_some() {
@@ -178,6 +188,9 @@ impl Runtime {
         }
         if spec.socket.is_none() {
             let _ = tokio::fs::remove_file(&row.socket).await;
+        }
+        if snapshots {
+            self.delete_vm_snapshots(owner, id).await?;
         }
         firemage_queries::delete_vm(&self.db, owner, id).await
     }

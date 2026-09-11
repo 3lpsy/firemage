@@ -9,6 +9,7 @@ impl Runtime {
         spec: &VmSpec,
     ) -> anyhow::Result<()> {
         self.ensure_isolation_policy(spec)?;
+        self.ensure_workload_init(&row.id, spec)?;
         let mut resolved = spec.clone();
         let directory = self.directory(&row.id);
         let rootfs_exists = directory.join("rootfs.ext4").exists();
@@ -56,22 +57,34 @@ impl Runtime {
                     .as_ref()
                     .context("rootfs required for prepare/start")?,
                 &dir.join("rootfs.ext4"),
+                spec.workload
+                    .as_ref()
+                    .and_then(|workload| workload.command.as_deref()),
             )
             .await?;
+            if matches!(spec.rootfs, Some(firemage_wire::Asset::Oci { .. })) {
+                tokio::fs::write(dir.join("oci-init-version"), b"1\n").await?;
+            }
         }
         if let Some(initrd) = &spec.initrd {
-            self.materialize_asset(&row.owner_id, initrd, &dir.join("initrd"))
+            self.materialize_asset(&row.owner_id, initrd, &dir.join("initrd"), None)
                 .await?;
         }
         for drive in &spec.drives {
             let path = dir.join(format!("drive-{}.img", drive.id));
             if !path.exists() {
-                self.materialize_asset(&row.owner_id, &drive.asset, &path)
+                self.materialize_asset(&row.owner_id, &drive.asset, &path, None)
                     .await?;
             }
         }
         let files = self.seed_files(&row.owner_id, spec).await?;
-        firemage_assets::seed(&files, spec.userdata.as_deref(), &dir).await?;
+        firemage_assets::seed(
+            &files,
+            spec.userdata.as_deref(),
+            &dir,
+            self.config.seed_max_bytes(),
+        )
+        .await?;
         Ok(())
     }
     pub(crate) async fn ensure_prepared_assets(
@@ -85,9 +98,11 @@ impl Runtime {
         }
         if !spec.files.is_empty()
             || !spec.attachments.is_empty()
+            || !spec.secret_attachments.is_empty()
             || spec.userdata.is_some()
             || !spec.environment.is_empty()
             || spec.network.is_some()
+            || spec.workload.is_some()
         {
             required.push("seed.ext4".into());
         }

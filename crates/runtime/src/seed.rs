@@ -9,6 +9,13 @@ impl Runtime {
     ) -> anyhow::Result<Vec<BootFile>> {
         let mut files = spec.files.clone();
         files.extend(self.attachment_files(owner, spec).await?);
+        files.extend(self.secret_attachment_files(owner, spec).await?);
+        if let Some(workload) = &spec.workload {
+            files.push(file(
+                "firemage/workload.sh",
+                crate::workload::script(workload),
+            ));
+        }
         let mut values = std::collections::BTreeMap::new();
         for (name, value) in &spec.environment {
             values.insert(

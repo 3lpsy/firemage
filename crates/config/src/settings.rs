@@ -5,8 +5,15 @@ use std::path::PathBuf;
 #[derive(Debug, Default, Clone, Args, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Server {
+    #[arg(long, env = "FIREMAGE_SNAPSHOT_DIR")]
+    pub snapshot_dir: Option<PathBuf>,
+    #[arg(long, env = "FIREMAGE_SNAPSHOT_MAX_BYTES")]
+    pub snapshot_max_bytes: Option<u64>,
     #[arg(long, env = "FIREMAGE_ASSET_DIR")]
     pub asset_dir: Option<PathBuf>,
+    /// Maximum uploaded file size in bytes. Requires a server restart.
+    #[arg(long, env = "FIREMAGE_ASSET_MAX_BYTES")]
+    pub asset_max_bytes: Option<u64>,
     #[arg(long, env = "FIREMAGE_KERNEL_DIR")]
     pub kernel_dir: Option<PathBuf>,
     #[arg(long, env = "FIREMAGE_LOCAL_ASSET_ROOTS", value_delimiter = ',')]
@@ -68,10 +75,22 @@ pub struct Server {
     pub oidc_client_id: Option<String>,
 }
 impl Server {
+    pub fn snapshot_dir(&self) -> PathBuf {
+        self.snapshot_dir
+            .clone()
+            .unwrap_or_else(|| self.data_dir().join("snapshots"))
+    }
+    pub fn snapshot_max_bytes(&self) -> u64 {
+        self.snapshot_max_bytes.unwrap_or(64 * 1024 * 1024 * 1024)
+    }
+
     pub fn merge(self, file: Self) -> Self {
         Self {
+            snapshot_dir: self.snapshot_dir.or(file.snapshot_dir),
+            snapshot_max_bytes: self.snapshot_max_bytes.or(file.snapshot_max_bytes),
             kernel_dir: self.kernel_dir.or(file.kernel_dir),
             asset_dir: self.asset_dir.or(file.asset_dir),
+            asset_max_bytes: self.asset_max_bytes.or(file.asset_max_bytes),
             local_asset_roots: self.local_asset_roots.or(file.local_asset_roots),
             external_socket_roots: self.external_socket_roots.or(file.external_socket_roots),
             jailer: self.jailer.or(file.jailer),
@@ -102,6 +121,13 @@ impl Server {
             oidc_issuer: self.oidc_issuer.or(file.oidc_issuer),
             oidc_client_id: self.oidc_client_id.or(file.oidc_client_id),
         }
+    }
+    pub fn asset_max_bytes(&self) -> u64 {
+        self.asset_max_bytes.unwrap_or(1024 * 1024 * 1024)
+    }
+    /// Reserve 128 MiB for inline files and generated guest configuration.
+    pub fn seed_max_bytes(&self) -> u64 {
+        self.asset_max_bytes().saturating_add(128 * 1024 * 1024)
     }
     pub fn asset_dir(&self) -> PathBuf {
         self.asset_dir

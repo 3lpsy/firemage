@@ -52,12 +52,12 @@ fn App() -> Element {
                 }
                 div { class: "workspace-label", "CONTROL PLANE" }
                 nav { "aria-label": "Main navigation",
-                    for item in [Page::Vms, Page::Kernels, Page::Assets, Page::Networks, Page::Activity, Page::Tokens, Page::Secrets, Page::Users, Page::Config] {
+                    for item in [Page::Vms, Page::Snapshots, Page::Kernels, Page::Assets, Page::Networks, Page::Activity, Page::Tokens, Page::Secrets, Page::Users, Page::Config] {
                         if !item.is_admin() || auth.is_admin() {
                             button {
                                 class: if page() == item { "nav-item active" } else { "nav-item" },
                                 "aria-current": if page() == item { "page" } else { "false" },
-                                onclick: move |_| page.set(item),
+                                onclick: move |_| { firemage_webui_routes::navigate(item); page.set(item); },
                                 span { class: "nav-icon",
                                     Icon { name: item.slug() }
                                 }
@@ -125,6 +125,7 @@ fn App() -> Element {
                         Page::Vms => rsx! {
                             firemage_webui_page_vms::Vms {}
                         },
+                        Page::Snapshots => rsx! { firemage_webui_page_snapshots::Snapshots {} },
                         Page::Networks => rsx! {
                             firemage_webui_page_networks::Networks {}
                         },

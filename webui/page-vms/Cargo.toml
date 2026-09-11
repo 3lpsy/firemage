@@ -12,4 +12,6 @@ firemage-webui-provider-auth = { path = "../provider-auth" }
 firemage-webui-component-controls = { path = "../component-controls" }
 firemage-webui-view-vm-detail = { path = "../view-vm-detail" }
 firemage-webui-view-vm-editor = { path = "../view-vm-editor" }
+firemage-webui-routes = { path = "../routes" }
+firemage-webui-view-vm-transfer = { path = "../view-vm-transfer" }
 gloo-timers = { version = "0.3", features = ["futures"] }

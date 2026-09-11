@@ -6,7 +6,12 @@ use firemage_webui_provider_auth::use_auth;
 use serde_json::{Value, json};
 
 #[component]
-pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Element {
+pub fn BootEditor(
+    vm: Value,
+    onclose: EventHandler<()>,
+    onsaved: EventHandler<()>,
+    #[props(default)] onapply: Option<EventHandler<Value>>,
+) -> Element {
     let auth = use_auth();
     let mut files = use_signal(|| {
         vm["spec"]["files"]
@@ -35,9 +40,14 @@ pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()
                 let attached = match firemage_webui_view_asset_attachments::attachments(&attachments.read()) {
                     Ok(value) => value, Err(message) => { error.set(message); return; }
                 };
+                let secrets = match firemage_webui_view_asset_attachments::secret_attachments(&attachments.read()) {
+                    Ok(value) => value, Err(message) => { error.set(message); return; }
+                };
                 let mut spec = vm["spec"].clone(); spec["files"] = json!(prepared);
                 spec["attachments"] = json!(attached);
+                spec["secret_attachments"] = json!(secrets);
                 if userdata().is_empty() { spec.as_object_mut().unwrap().remove("userdata"); } else { spec["userdata"] = json!(userdata()); }
+                if let Some(onapply) = onapply { onapply.call(spec); return; }
                 let path = format!("/v1/vms/{}", text(&vm, "id"));
                 busy.set(true); error.set(String::new());
                 spawn(async move {
@@ -58,9 +68,10 @@ pub fn BootEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()
                     }
                     Editor { label: "Post-setup script", id: "boot-userdata", value: userdata, rows: 8 }
                 }
+                if onapply.is_some() { p { class: "small muted", "Applied changes are saved when you submit the VM form." } }
                 div { class: "actions end",
                     button { r#type: "button", onclick: move |_| onclose.call(()), "Cancel" }
-                    button { r#type: "submit", class: "primary", disabled: busy(), "Save boot inputs" }
+                    button { r#type: "submit", class: "primary", disabled: busy(), if onapply.is_some() { "Apply to draft" } else { "Save boot inputs" } }
                 }
             }
         }

@@ -1,11 +1,12 @@
 //! Reusable asset selection and per-VM destination fields.
 mod form;
 mod picker;
+mod secret;
 use dioxus::prelude::*;
 use firemage_webui_component_controls::Notice;
 use firemage_webui_provider_api::get;
 use firemage_wire::FileAsset;
-pub use form::{AttachmentForm, attachments, from_spec};
+pub use form::{AttachmentForm, attachments, from_spec, secret_attachments};
 
 #[component]
 pub fn Attachments(mut value: Signal<Vec<AttachmentForm>>) -> Element {
@@ -27,7 +28,19 @@ pub fn Attachments(mut value: Signal<Vec<AttachmentForm>>) -> Element {
             for index in 0..value.read().len() {
                 div { class: "attachment-row",
                     div { class: "attachment-fields",
-                        picker::AssetPicker { value, index, rows: rows.read().as_ref().and_then(|r| r.as_ref().ok()).cloned().unwrap_or_default() }
+                        label { class: "field", r#for: "attachment-source-{index}", span { "Source" }
+                            select { id: "attachment-source-{index}", value: if value.read()[index].secret.is_some() { "secret" } else { "asset" },
+                                onchange: move |event| {
+                                    let mut forms = value.write(); let form = &mut forms[index];
+                                    form.secret = if event.value() == "secret" { Some(String::new()) } else { None };
+                                    form.asset_id.clear(); form.mode = if form.secret.is_some() { "0600" } else { "0644" }.into();
+                                },
+                                option { value: "asset", "Asset" }
+                                option { value: "secret", "Secret" }
+                            }
+                        }
+                        if value.read()[index].secret.is_some() { secret::SecretPicker { value, index } }
+                        else { picker::AssetPicker { value, index, rows: rows.read().as_ref().and_then(|r| r.as_ref().ok()).cloned().unwrap_or_default() } }
                         label { class: "field", r#for: "asset-destination-{index}", span { "Destination in VM" }
                             input { id: "asset-destination-{index}", required: true, placeholder: "/etc/app/config.json", value: "{value.read()[index].destination}", oninput: move |e| value.write()[index].destination = e.value() }
                         }
@@ -42,9 +55,9 @@ pub fn Attachments(mut value: Signal<Vec<AttachmentForm>>) -> Element {
                     }
                 }
             }
-            if value.read().is_empty() { p { class: "small muted", "No assets attached." } }
+            if value.read().is_empty() { p { class: "small muted", "No files or secrets attached." } }
             button { r#type: "button", onclick: move |_| value.write().push(AttachmentForm::default()), "+ Attach asset" }
-            p { class: "small muted", "Upload reusable files from Assets in the sidebar. Files are copied to their destinations when the VM boots. Custom images must support boot file installation." }
+            p { class: "small muted", "Choose an uploaded asset or a named secret and its destination. Secret files default to 0600. Files are installed on boot; custom images must support boot file installation." }
         }
     }
 }

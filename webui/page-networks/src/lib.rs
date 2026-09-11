@@ -1,5 +1,8 @@
 //! Named network policy inventory and editor.
 mod editor;
+mod gateway;
+#[cfg(test)]
+mod tests;
 use dioxus::prelude::*;
 use editor::NetworkEditor;
 use firemage_webui_component_controls::*;

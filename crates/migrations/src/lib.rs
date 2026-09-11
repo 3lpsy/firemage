@@ -9,6 +9,7 @@ mod m006_activity;
 mod m007_secrets;
 mod m008_kernel_aliases;
 mod m009_file_assets;
+mod m010_snapshots;
 pub struct Migrator;
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
@@ -23,6 +24,7 @@ impl MigratorTrait for Migrator {
             Box::new(m007_secrets::Migration),
             Box::new(m008_kernel_aliases::Migration),
             Box::new(m009_file_assets::Migration),
+            Box::new(m010_snapshots::Migration),
         ]
     }
 }

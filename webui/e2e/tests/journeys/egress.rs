@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use firemage_webui_e2e::Harness;
-use thirtyfour::{components::SelectElement, prelude::*};
+use thirtyfour::prelude::*;
 
 pub async fn egress(h: &Harness) -> Result<()> {
     h.login("admin").await?;
@@ -45,13 +45,12 @@ pub async fn egress(h: &Harness) -> Result<()> {
     h.fill("vm-name", "proxy-runner").await?;
     h.select_kernel("kernel").await?;
     h.fill("vm-rootfs", &h.asset("root.ext4")).await?;
-    SelectElement::new(&h.element(By::Id("vm-network")).await?)
-        .await?
-        .select_by_value("proxy-net")
-        .await?;
+    h.button("Network").await?;
+    h.select_value("vm-network", "proxy-net").await?;
     h.fill("vm-address", "172.30.0.2").await?;
-    h.modal_button("Create VM").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Create VM").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
+    h.navigate("Virtual machines").await?;
     h.button("proxy-runner").await?;
     h.button("Egress").await?;
     h.button("Configure egress").await?;
@@ -61,15 +60,15 @@ pub async fn egress(h: &Harness) -> Result<()> {
         .await?
         .click()
         .await?;
-    SelectElement::new(&h.element(By::Id("rule-0-header-0-secret")).await?)
-        .await?
-        .select_by_value("cloud-token")
+    h.select_value("rule-0-header-0-secret", "cloud-token")
         .await?;
     h.radio("rule-0-signing", "HMAC SHA-256").await?;
-    SelectElement::new(&h.element(By::Id("rule-0-signing-key-secret")).await?)
-        .await?
-        .select_by_value("cloud-token")
+    h.select_value("rule-0-signing-key-secret", "cloud-token")
         .await?;
+    anyhow::ensure!(
+        h.value("rule-0-signing-key-secret").await? == "cloud-token",
+        "HMAC selection was not retained immediately"
+    );
     h.button("+ Add TCP tunnel").await?;
     h.fill("egress-tunnel-0-name", "database").await?;
     h.fill("egress-tunnel-0-target_host", "db.example.com")
@@ -80,10 +79,12 @@ pub async fn egress(h: &Harness) -> Result<()> {
     h.fill("egress-upstream-username-literal", "runner").await?;
     h.radio("egress-upstream-password-mode", "Sensitive secret")
         .await?;
-    SelectElement::new(&h.element(By::Id("egress-upstream-password-secret")).await?)
-        .await?
-        .select_by_value("cloud-token")
+    h.select_value("egress-upstream-password-secret", "cloud-token")
         .await?;
+    anyhow::ensure!(
+        h.value("rule-0-signing-key-secret").await? == "cloud-token",
+        "HMAC selection was lost after other fields"
+    );
     h.screenshot("egress-editor").await?;
     h.modal_button("Save egress").await?;
     h.absent(By::Css("[role='dialog']")).await?;
@@ -140,13 +141,8 @@ pub async fn egress(h: &Harness) -> Result<()> {
     h.fill("rule-0-signing-region", "us-east-1").await?;
     h.fill("rule-0-signing-service", "execute-api").await?;
     for name in ["access_key", "secret_key"] {
-        SelectElement::new(
-            &h.element(By::Id(format!("rule-0-signing-{name}-secret")))
-                .await?,
-        )
-        .await?
-        .select_by_value("cloud-token")
-        .await?;
+        h.select_value(&format!("rule-0-signing-{name}-secret"), "cloud-token")
+            .await?;
     }
     h.radio("egress-upstream-mode", "SOCKS5 proxy").await?;
     h.fill("egress-upstream-url", "socks5://proxy.example.com:1080")

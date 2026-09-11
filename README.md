@@ -9,6 +9,8 @@ Firemage manages Firecracker microVMs through one binary, an HTTP JSON API, a CL
 - Restrict guest networking with HTTP/TLS policies, credential injection, and TCP tunnels.
 - Use jailed host isolation by default, with explicit opt-in for trusted workloads.
 
+See [VM workflows](docs/vms.md) for creation, attachments, workloads, terminal access and snapshots.
+
 Linux with KVM is required to run VMs. Jailed operation also requires the Firecracker jailer, cgroup v2, and a reserved host UID/GID range.
 
 To build, copy `.env.example` to `.env` and set `FIREMAGE_DEPENDENCY_INDEX` to your Cargo dependency proxy's HTTPS sparse index. Install `just` and Docker or Podman, then run:

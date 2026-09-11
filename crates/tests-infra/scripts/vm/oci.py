@@ -12,6 +12,8 @@ import subprocess
 import tarfile
 import threading
 
+from .harness import wait_for
+
 
 def digest(path):
     with path.open("rb") as stream:
@@ -54,6 +56,19 @@ def image_fixture(harness, directory):
         "layers": [descriptor(compressed, "application/vnd.oci.image.layer.v1.tar+gzip")],
     }, separators=(",", ":")))
     return manifest, config, compressed
+
+
+def commandless_fixture(directory, original_manifest, original_config):
+    config = directory / "commandless-config.json"
+    content = json.loads(original_config.read_text())
+    del content["config"]["Entrypoint"]
+    del content["config"]["Cmd"]
+    config.write_text(json.dumps(content, separators=(",", ":")))
+    manifest = directory / "commandless-manifest.json"
+    content = json.loads(original_manifest.read_text())
+    content["config"] = descriptor(config, "application/vnd.oci.image.config.v1+json")
+    manifest.write_text(json.dumps(content, separators=(",", ":")))
+    return manifest, config
 
 
 class Registry(http.server.BaseHTTPRequestHandler):
@@ -120,6 +135,9 @@ printf 'native-private-oci-ok\\n' > /firemage/output/result
                     "ca_secret": "oci-ca",
                 },
             })
+        file_credential = secrets.token_hex(32)
+        file_digest = hashlib.sha256(file_credential.encode()).hexdigest()
+        harness.request("PUT", "/v1/secrets/guest-file", {"value": file_credential})
         returned = harness.request("GET", f"/v1/vms/{vm}")
         assert password not in json.dumps(returned), "VM response contains registry credentials"
         assert harness.action(vm, "start")["state"] == "running"
@@ -129,6 +147,39 @@ printf 'native-private-oci-ok\\n' > /firemage/output/result
         assert server.challenges > 0 and server.authorized == set(server.files), "native pull did not authenticate every registry asset"
         assert not list((harness.data / "vms" / vm).glob(".firemage-oci-*")), "OCI extraction staging leaked"
         assert password not in harness.console(vm), "registry credentials leaked into guest logs"
+        rootfs = returned["spec"]["rootfs"]
+        no_command_manifest, no_command_config = commandless_fixture(directory, manifest, config)
+        server.files.update({
+            f"/v2/test/image/manifests/{digest(no_command_manifest)}": (no_command_manifest, "application/vnd.oci.image.manifest.v1+json"),
+            f"/v2/test/image/blobs/{digest(no_command_config)}": (no_command_config, "application/vnd.oci.image.config.v1+json"),
+        })
+        commandless_rootfs = dict(rootfs, image=f"127.0.0.1:{server.server_port}/test/image@{digest(no_command_manifest)}")
+        rejected = harness.define("oci-no-command", "exit 99", rootfs=commandless_rootfs)
+        try:
+            harness.action(rejected, "prepare")
+        except AssertionError as error:
+            assert "OCI image has no command" in str(error), error
+        else:
+            raise AssertionError("commandless OCI image prepared without an override")
+        assert not (harness.data / "vms" / rejected / "rootfs.ext4").exists()
+        for mode, code in [("one-shot", 7), ("keep-alive", 0)]:
+            command = ["/bin/sh", "-c", "set -eu; [ \"$(sha256sum /root/auth.json | cut -d ' ' -f 1)\" = " + file_digest + " ]; [ \"$(stat -c '%a' /root/auth.json)\" = 600 ]; [ \"$(cat /firemage/output/userdata-result)\" = ready ]; printf 'override-ok\\n' > /firemage/output/result; echo FIREMAGE_MAIN_DONE; exit " + str(code)]
+            worker = harness.define("oci-" + mode, "exit 99", rootfs=commandless_rootfs if mode == "one-shot" else rootfs,
+                boot_args="console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda rw", userdata=userdata,
+                workload={"mode": mode, "command": command},
+                secret_attachments=[{"secret": "guest-file", "destination": "/root/auth.json"}])
+            harness.action(worker, "start")
+            if mode == "keep-alive":
+                wait_for("keep-alive main completion", lambda: "main program will not restart; guest remains running" in harness.console(worker))
+                assert harness.request("GET", f"/v1/vms/{worker}")["state"] == "running"
+                harness.action(worker, "stop")
+            else:
+                harness.state(worker, "stopped")
+            assert harness.output(worker, "exit-code") == f"{code}\n".encode(), harness.console(worker)
+            assert harness.output(worker, "result") == b"override-ok\n"
+            assert file_credential not in json.dumps(harness.request("GET", f"/v1/vms/{worker}"))
+        assert server.authorized == set(server.files), "commandless OCI manifest was not pulled"
+        print("PASS OCI workload: commandless image override and missing-command rejection, userdata before main, secret files, nonzero one-shot exit and keep-alive", flush=True)
         print("PASS native OCI: private TLS registry, vault authentication, image command/environment, userdata, offline guest", flush=True)
     finally:
         server.shutdown()

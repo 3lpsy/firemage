@@ -8,6 +8,11 @@ pub struct Form {
     pub source: String,
     pub rootfs: String,
     pub rootfs_sha: String,
+    pub rootfs_size: String,
+    pub workload_mode: String,
+    pub command: String,
+    pub terminal: bool,
+    pub metadata: String,
     pub registry: crate::registry::RegistryForm,
     pub vcpus: String,
     pub memory: String,
@@ -50,6 +55,10 @@ impl Form {
             return Err("Choose a valid host isolation mode.".into());
         }
         spec["security"] = json!({"mode": isolation});
+        spec["terminal"] = json!(self.terminal);
+        if !self.metadata.trim().is_empty() {
+            spec["metadata"] = parse_json(&self.metadata, "Metadata", is_draft)?;
+        }
         if self.mode == "socket" {
             spec["socket"] = json!(self.socket);
         } else {
@@ -71,8 +80,26 @@ impl Form {
                     if !is_draft {
                         ensure_oci_reference(&self.rootfs)?;
                     }
-                    let mut rootfs =
-                        json!({ "kind" : "oci", "image" : self.rootfs, "size_mib" : 2048 });
+                    let size = self.rootfs_size.parse::<u64>();
+                    if !is_draft && !size.as_ref().is_ok_and(|n| (16..=32768).contains(n)) {
+                        return Err("Root disk size must be 16–32768 MiB.".into());
+                    }
+                    let size = size.map_or_else(|_| json!(self.rootfs_size), |n| json!(n));
+                    let mut rootfs = json!({"kind":"oci", "image":self.rootfs, "size_mib":size});
+                    spec["workload"] = json!({"mode":self.workload_mode});
+                    if !self.command.trim().is_empty() {
+                        let command = parse_json(&self.command, "Workload command", is_draft)?;
+                        if !is_draft {
+                            let workload: firemage_wire::Workload = serde_json::from_value(
+                                json!({"mode":self.workload_mode,"command":command}),
+                            )
+                            .map_err(|_| {
+                                "Workload command must be a JSON array of arguments.".to_owned()
+                            })?;
+                            workload.validate().map_err(|e| e.to_string())?;
+                        }
+                        spec["workload"]["command"] = command;
+                    }
                     if let Some(registry) = self.registry.value()? {
                         rootfs["registry"] = registry;
                     }
@@ -104,6 +131,12 @@ fn ensure_oci_reference(image: &str) -> Result<(), String> {
 }
 /// TOML has no null; omitted optional fields preserve the VM wire defaults.
 pub fn to_toml(value: &Value) -> Result<String, String> {
+    if let Some(metadata) = value.get("metadata").filter(|metadata| !metadata.is_null()) {
+        toml::Value::try_from(metadata).map_err(|_| {
+            "Metadata contains values TOML cannot represent, such as JSON null. Keep using Guided setup to preserve them."
+                .to_owned()
+        })?;
+    }
     fn clean(value: &Value) -> Value {
         match value {
             Value::Object(fields) => Value::Object(
@@ -138,6 +171,9 @@ pub fn merge_guided(base: &Value, generated: Value) -> Value {
         "kernel",
         "rootfs",
         "security",
+        "workload",
+        "terminal",
+        "metadata",
     ] {
         let Some(next) = generated.get(key) else {
             if matches!(key, "kernel" | "rootfs") && generated.get("socket").is_some() {
@@ -155,9 +191,6 @@ pub fn merge_guided(base: &Value, generated: Value) -> Value {
                 previous.remove("registry");
             }
             for (field, value) in next.as_object().unwrap() {
-                if key == "rootfs" && field == "size_mib" && previous.contains_key(field) {
-                    continue;
-                }
                 previous.insert(field.clone(), value.clone());
             }
         } else {
@@ -165,4 +198,12 @@ pub fn merge_guided(base: &Value, generated: Value) -> Value {
         }
     }
     result
+}
+
+fn parse_json(text: &str, label: &str, is_draft: bool) -> Result<Value, String> {
+    match serde_json::from_str(text) {
+        Ok(value) => Ok(value),
+        Err(_) if is_draft => Ok(json!(text)),
+        Err(error) => Err(format!("{label} is invalid JSON: {error}")),
+    }
 }

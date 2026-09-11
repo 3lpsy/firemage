@@ -12,12 +12,18 @@ async fn stage_files_are_private_and_guest_setup_preserves_numeric_ownership() {
         gid: 1001,
         mode: 0o640,
     };
-    stage(&[input], Some("echo ready"), &staging).await.unwrap();
+    stage(&[input], Some("echo ready"), &staging, 1024)
+        .await
+        .unwrap();
     let mode = std::fs::metadata(staging.join("nested/file.txt"))
         .unwrap()
         .permissions()
         .mode();
     assert_eq!(mode & 0o777, 0o600);
+    assert_eq!(
+        std::fs::read(staging.join("nested/file.txt")).unwrap(),
+        b"private-data"
+    );
     assert_eq!(
         std::fs::metadata(staging.join("nested"))
             .unwrap()
@@ -38,7 +44,73 @@ async fn removing_inputs_removes_stale_seed_and_plaintext_staging() {
     std::fs::create_dir(&staging).unwrap();
     std::fs::write(staging.join("old-secret"), "old").unwrap();
     std::fs::write(directory.path().join("seed.ext4"), "disk").unwrap();
-    assert!(seed(&[], None, directory.path()).await.unwrap().is_none());
+    assert!(
+        seed(&[], None, directory.path(), 1024)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(!staging.exists());
     assert!(!directory.path().join("seed.ext4").exists());
+}
+
+#[tokio::test]
+async fn staging_enforces_configured_aggregate_including_userdata() {
+    let directory = tempfile::tempdir().unwrap();
+    let file = BootFile {
+        path: "file".into(),
+        content: "data".into(),
+        encoding: Default::default(),
+        destination: None,
+        uid: 0,
+        gid: 0,
+        mode: 0o600,
+    };
+    assert_eq!(
+        stage(
+            std::slice::from_ref(&file),
+            Some("ok"),
+            &directory.path().join("exact"),
+            6
+        )
+        .await
+        .unwrap(),
+        6
+    );
+    assert!(
+        stage(&[file], Some("ok"), &directory.path().join("over"), 5)
+            .await
+            .is_err()
+    );
+    assert!(
+        stage(&[], Some("too big"), &directory.path().join("userdata"), 6)
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn staging_accepts_files_above_the_former_32_mib_limit() {
+    let directory = tempfile::tempdir().unwrap();
+    let length = 32 * 1024 * 1024 + 1;
+    let file = BootFile {
+        path: "file".into(),
+        content: "x".repeat(length),
+        encoding: Default::default(),
+        destination: None,
+        uid: 0,
+        gid: 0,
+        mode: 0o600,
+    };
+    assert_eq!(
+        stage(
+            &[file],
+            None,
+            &directory.path().join("large"),
+            length as u64
+        )
+        .await
+        .unwrap(),
+        length as u64
+    );
 }

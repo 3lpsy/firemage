@@ -173,3 +173,95 @@ async fn attachment_creation_and_asset_deletion_cannot_leave_a_dangling_referenc
         runtime.config.asset_dir().join(&asset.id).exists()
     );
 }
+
+#[tokio::test]
+async fn configured_limit_applies_to_uploads_reads_and_attachment_files() {
+    let (_directory, mut runtime, owner, _) = fixture().await;
+    runtime.config.asset_max_bytes = Some(4);
+    let asset = runtime
+        .upload_file_asset(&owner, upload("boundary"), vec![1, 2, 3, 4])
+        .await
+        .unwrap();
+    assert!(
+        runtime
+            .upload_file_asset(&owner, upload("too-large"), vec![0; 5])
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        runtime.file_asset_content(&owner, &asset.id).await.unwrap(),
+        [1, 2, 3, 4]
+    );
+    let mut spec = attached(&asset.id);
+    spec.userdata = Some("echo ready".into());
+    assert_eq!(runtime.seed_files(&owner, &spec).await.unwrap().len(), 1);
+    std::fs::write(runtime.config.asset_dir().join(&asset.id), [0; 5]).unwrap();
+    assert!(runtime.file_asset_content(&owner, &asset.id).await.is_err());
+    assert!(
+        runtime
+            .validate_asset_attachments(&owner, &spec)
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn full_size_assets_fit_boot_budget_without_large_test_allocations() {
+    let (_directory, runtime, owner, _) = fixture().await;
+    let asset = runtime
+        .upload_file_asset(&owner, upload("large"), vec![])
+        .await
+        .unwrap();
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(runtime.config.asset_dir().join(&asset.id))
+        .unwrap();
+    file.set_len(runtime.config.asset_max_bytes()).unwrap();
+    firemage_queries::delete_file_asset(&runtime.db, &owner, &asset.id)
+        .await
+        .unwrap();
+    firemage_queries::insert_file_asset(
+        &runtime.db,
+        firemage_orm::file_assets::Model {
+            id: asset.id.clone(),
+            owner_id: owner.clone(),
+            alias: asset.alias,
+            filename: asset.filename,
+            size_bytes: runtime.config.asset_max_bytes() as i64,
+            sha256: asset.sha256,
+            created_at: asset.created_at,
+        },
+    )
+    .await
+    .unwrap();
+    let mut spec = attached(&asset.id);
+    spec.userdata = Some("echo ready".into());
+    runtime
+        .validate_asset_attachments(&owner, &spec)
+        .await
+        .unwrap();
+    let mut second = spec.attachments[0].clone();
+    second.destination = "/root/second-file".into();
+    spec.attachments.push(second);
+    assert!(
+        runtime
+            .validate_asset_attachments(&owner, &spec)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("combined guest boot inputs exceed")
+    );
+}
+
+#[tokio::test]
+async fn lowering_upload_limit_still_allows_deleting_unreferenced_assets() {
+    let (_directory, mut runtime, owner, _) = fixture().await;
+    let asset = runtime
+        .upload_file_asset(&owner, upload("old"), vec![0; 5])
+        .await
+        .unwrap();
+    runtime.config.asset_max_bytes = Some(4);
+    runtime.delete_file_asset(&owner, &asset.id).await.unwrap();
+    assert!(runtime.file_assets(&owner).await.unwrap().is_empty());
+    assert!(!runtime.config.asset_dir().join(asset.id).exists());
+}

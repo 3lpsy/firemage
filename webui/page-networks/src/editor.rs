@@ -13,18 +13,14 @@ pub fn NetworkEditor(
     let original = initial["name"].as_str().map(str::to_owned);
     let editing = original.is_some();
     let name = use_signal(|| text(&initial, "name"));
-    let subnet = use_signal(|| {
+    let mut subnet = use_signal(|| {
         initial["subnet"]
             .as_str()
             .unwrap_or("172.30.0.0/24")
             .to_owned()
     });
-    let gateway = use_signal(|| {
-        initial["gateway"]
-            .as_str()
-            .unwrap_or("172.30.0.1")
-            .to_owned()
-    });
+    let mut gateway =
+        use_signal(|| crate::gateway::Gateway::new(initial["gateway"].as_str(), &subnet()));
     let mut policy = use_signal(|| {
         initial["policy"]["mode"]
             .as_str()
@@ -48,7 +44,7 @@ pub fn NetworkEditor(
                         rule["address"] = json!(address());
                     }
                     let body = json!(
-                        { "name" : name(), "subnet" : subnet(), "gateway" : gateway(), "policy" :
+                        { "name" : name(), "subnet" : subnet(), "gateway" : gateway().value, "policy" :
                         rule }
                     );
                     let path = original
@@ -81,17 +77,20 @@ pub fn NetworkEditor(
                         disabled: editing,
                     }
                     div { class: "form-grid",
-                        Field {
-                            label: "IPv4 subnet",
-                            id: "network-subnet",
-                            value: subnet,
-                            required: true,
+                        label { class: "field", span { "IPv4 subnet" }
+                            input {
+                                id: "network-subnet", value: "{subnet}", required: true,
+                                oninput: move |event| {
+                                    gateway.write().update_subnet(&event.value());
+                                    subnet.set(event.value());
+                                },
+                            }
                         }
-                        Field {
-                            label: "Gateway",
-                            id: "network-gateway",
-                            value: gateway,
-                            required: true,
+                        label { class: "field", span { "Gateway" }
+                            input {
+                                id: "network-gateway", value: gateway().value, required: true,
+                                oninput: move |event| gateway.write().edit(event.value()),
+                            }
                         }
                     }
                     fieldset {

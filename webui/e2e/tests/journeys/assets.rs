@@ -1,9 +1,16 @@
 use anyhow::{Context, Result};
 use firemage_webui_e2e::Harness;
-use thirtyfour::prelude::*;
+use thirtyfour::{components::SelectElement, prelude::*};
 
 pub async fn assets(h: &Harness) -> Result<()> {
     h.login("admin").await?;
+    h.navigate("Secrets").await?;
+    h.button("+ Create secret").await?;
+    h.fill("secret-name", "review-credentials").await?;
+    h.fill("secret-value", "browser-attachment-private-value")
+        .await?;
+    h.modal_button("Save secret").await?;
+    h.absent(By::Css("[role='dialog']")).await?;
     h.navigate("Assets").await?;
     h.text("No assets yet").await?;
     h.button("Upload asset").await?;
@@ -69,9 +76,27 @@ pub async fn assets(h: &Harness) -> Result<()> {
     h.fill("asset-uid-0", "1000").await?;
     h.fill("asset-gid-0", "1000").await?;
     h.fill("asset-mode-0", "0600").await?;
+    h.button("+ Attach asset").await?;
+    SelectElement::new(&h.element(By::Id("attachment-source-1")).await?)
+        .await?
+        .select_by_value("secret")
+        .await?;
+    h.fill("vm-secret-file-1", "review-credentials").await?;
+    h.fill("asset-destination-1", "/root/.config/reviewer/auth.json")
+        .await?;
+    h.element(By::XPath(
+        "//input[@id='asset-mode-1']/ancestor::details[1]/summary",
+    ))
+    .await?
+    .click()
+    .await?;
+    anyhow::ensure!(
+        h.value("asset-mode-1").await? == "0600",
+        "secret attachment did not default to private mode"
+    );
     h.screenshot("vm-asset-create").await?;
-    h.modal_button("Create VM").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Create VM").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
     let created = h.api("/v1/vms").await?;
     let vm = &created[0];
     anyhow::ensure!(vm["state"] == "defined", "creating a VM started it");
@@ -83,6 +108,12 @@ pub async fn assets(h: &Harness) -> Result<()> {
             && attachment["gid"] == 1000
             && attachment["mode"] == 384,
         "creation lost asset identity, destination or permissions"
+    );
+    anyhow::ensure!(
+        vm["spec"]["secret_attachments"][0]["secret"] == "review-credentials"
+            && vm["spec"]["secret_attachments"][0]["mode"] == 384
+            && !vm.to_string().contains("browser-attachment-private-value"),
+        "secret attachment was lost or exposed plaintext"
     );
     let vm_id = vm["id"].as_str().context("VM ID")?.to_owned();
     h.navigate("Assets").await?;
@@ -127,25 +158,38 @@ pub async fn assets(h: &Harness) -> Result<()> {
         .error_for_status()?;
     h.navigate("Virtual machines").await?;
     h.button("asset-review").await?;
-    h.button("Configure VM").await?;
+    h.button("Attachments").await?;
     h.text("worker-config").await?;
-    h.modal_button("Full TOML").await?;
+    h.text("review-credentials").await?;
+    h.text("/root/.config/reviewer/auth.json").await?;
+    anyhow::ensure!(
+        !h.driver
+            .source()
+            .await?
+            .contains("browser-attachment-private-value"),
+        "attachment table exposed secret contents"
+    );
+    h.screenshot("vm-attachments").await?;
+    h.button("Edit attachments").await?;
+    h.text("worker-config").await?;
+    h.button("Full TOML").await?;
     let toml = h.value("vm-toml").await?;
     anyhow::ensure!(
         toml.contains("[[attachments]]") && toml.contains(&id),
         "TOML lost attachment identity"
     );
-    h.modal_button("Guided setup").await?;
+    h.button("Guided setup").await?;
     h.fill("asset-destination-0", "/opt/reviewer/config.json")
         .await?;
     h.screenshot("vm-asset-edit").await?;
-    h.modal_button("Save configuration").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Save configuration").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
     let edited = h.api("/v1/vms").await?;
     anyhow::ensure!(
         edited[0]["spec"]["environment"] == seeded["environment"]
             && edited[0]["spec"]["files"] == seeded["files"]
-            && edited[0]["spec"]["rootfs"] == seeded["rootfs"],
+            && edited[0]["spec"]["rootfs"] == seeded["rootfs"]
+            && edited[0]["spec"]["secret_attachments"] == seeded["secret_attachments"],
         "guided asset editing discarded environment, inline files or OCI disk size"
     );
     anyhow::ensure!(
@@ -154,6 +198,9 @@ pub async fn assets(h: &Harness) -> Result<()> {
             && edited[0]["spec"]["attachments"][0]["mode"] == 384,
         "guided edit lost asset identity, destination or permissions"
     );
+    h.button("Attachments").await?;
+    h.text("/opt/reviewer/config.json").await?;
+    h.button("Overview").await?;
     h.button("Delete VM").await?;
     h.modal_button("Delete VM").await?;
     h.text("No virtual machines yet").await?;

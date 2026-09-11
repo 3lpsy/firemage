@@ -6,7 +6,12 @@ use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
 
 #[component]
-pub fn EgressEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Element {
+pub fn EgressEditor(
+    vm: Value,
+    onclose: EventHandler<()>,
+    onsaved: EventHandler<()>,
+    #[props(default)] onapply: Option<EventHandler<Value>>,
+) -> Element {
     let auth = use_auth();
     let mut draft = use_signal(|| model::Draft::new(&vm["spec"]["egress"]));
     let mut error = use_signal(String::new);
@@ -21,7 +26,8 @@ pub fn EgressEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<
                         Ok(spec) => spec,
                         Err(message) => { error.set(message); return; }
                     };
-                    let id = text(&vm, "id");
+                    if let Some(onapply) = onapply { onapply.call(spec); return; }
+                let id = text(&vm, "id");
                     busy.set(true);
                     error.set(String::new());
                     spawn(async move {
@@ -90,10 +96,11 @@ pub fn EgressEditor(vm: Value, onclose: EventHandler<()>, onsaved: EventHandler<
                     crate::upstream::Upstream { draft }
                     if draft.read().tunnels.is_empty() { p { class: "small muted", "No TCP tunnels configured." } }
                 }
+                if onapply.is_some() { p { class: "small muted", "Applied changes are saved when you submit the VM form." } }
                 div { class: "actions end",
                     button { r#type: "button", onclick: move |_| onclose.call(()), "Cancel" }
                     button { r#type: "submit", class: "primary", disabled: busy(),
-                        if busy() { "Saving…" } else { "Save egress" }
+                        if busy() { "Saving…" } else if onapply.is_some() { "Apply to draft" } else { "Save egress" }
                     }
                 }
             }

@@ -30,11 +30,13 @@ impl Image {
     }
 }
 
+/// A command override is supplied at boot; image defaults remain unchanged in the result.
 pub async fn unpack(
     image: &str,
     parent: &Path,
     options: &RegistryOptions,
     max_bytes: u64,
+    command_override: Option<&[String]>,
 ) -> anyhow::Result<Image> {
     ensure!(
         (16 * 1024 * 1024..=32 * 1024 * 1024 * 1024).contains(&max_bytes),
@@ -42,7 +44,7 @@ pub async fn unpack(
     );
     tokio::time::timeout(
         std::time::Duration::from_secs(1800),
-        unpack_inner(image, parent, options, max_bytes),
+        unpack_inner(image, parent, options, max_bytes, command_override),
     )
     .await
     .context("OCI image preparation exceeded 30 minutes")?
@@ -53,6 +55,7 @@ async fn unpack_inner(
     parent: &Path,
     options: &RegistryOptions,
     max_bytes: u64,
+    command_override: Option<&[String]>,
 ) -> anyhow::Result<Image> {
     let mut registry = Registry::new(image, options)?;
     let manifest = registry.manifest().await?;
@@ -71,7 +74,7 @@ async fn unpack_inner(
             && config.rootfs().diff_ids().len() == manifest.layers().len(),
         "OCI configuration layer digests do not match the manifest"
     );
-    let process = crate::process::process(&config)?;
+    let process = crate::process::process(&config, command_override)?;
     use std::os::unix::fs::PermissionsExt;
     let directory = tempfile::Builder::new()
         .permissions(std::fs::Permissions::from_mode(0o700))

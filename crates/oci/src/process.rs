@@ -2,11 +2,19 @@ use anyhow::ensure;
 use oci_spec::image::ImageConfiguration;
 use serde_json::{Value, json};
 
-pub(crate) fn process(image: &ImageConfiguration) -> anyhow::Result<Value> {
-    let config = image
-        .config()
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("OCI image has no command configuration"))?;
+pub(crate) fn process(
+    image: &ImageConfiguration,
+    command_override: Option<&[String]>,
+) -> anyhow::Result<Value> {
+    if let Some(command) = command_override {
+        ensure!(
+            !command.is_empty()
+                && !command[0].is_empty()
+                && command.iter().all(|arg| !arg.contains('\0')),
+            "invalid OCI workload command override"
+        );
+    }
+    let config = image.config().clone().unwrap_or_default();
     let user = config.user().as_deref().unwrap_or("");
     ensure!(
         matches!(
@@ -23,7 +31,7 @@ pub(crate) fn process(image: &ImageConfiguration) -> anyhow::Result<Value> {
         .cloned()
         .collect();
     ensure!(
-        !args.is_empty() && !args[0].is_empty(),
+        command_override.is_some() || (!args.is_empty() && !args[0].is_empty()),
         "OCI image has no command"
     );
     ensure!(
@@ -64,8 +72,53 @@ mod tests {
             "architecture":"amd64","os":"linux","rootfs":{"type":"layers","diff_ids":[]},
             "config":{"Entrypoint":["/bin/sh","-c"],"Cmd":["echo 'hello'"],"WorkingDir":"","User":"root"}
         })).unwrap();
-        let process = process(&config).unwrap();
+        let process = process(&config, None).unwrap();
         assert_eq!(process["args"], json!(["/bin/sh", "-c", "echo 'hello'"]));
         assert_eq!(process["cwd"], "/");
+    }
+
+    #[test]
+    fn commandless_image_requires_valid_override_without_persisting_it() {
+        for image_config in [json!({}), Value::Null] {
+            let image: ImageConfiguration = serde_json::from_value(json!({
+                "architecture":"amd64", "os":"linux",
+                "rootfs":{"type":"layers", "diff_ids":[]}, "config":image_config
+            }))
+            .unwrap();
+            assert!(
+                process(&image, None)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("no command")
+            );
+            let override_args = vec!["/bin/sh".into(), "-c".into(), "echo 'override'".into()];
+            let result = process(&image, Some(&override_args)).unwrap();
+            assert_eq!(result["args"], json!([]));
+            assert_eq!(result["cwd"], "/");
+            for invalid in [vec![], vec![String::new()], vec!["sh\0".into()]] {
+                assert!(process(&image, Some(&invalid)).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn override_preserves_image_defaults_and_security_validation() {
+        let mut image: ImageConfiguration = serde_json::from_value(json!({
+            "architecture":"amd64", "os":"linux", "rootfs":{"type":"layers", "diff_ids":[]},
+            "config":{"Cmd":["/image-default"], "Env":["IMAGE_VALUE=preserved"]}
+        }))
+        .unwrap();
+        let override_args = vec!["/override".into()];
+        let result = process(&image, Some(&override_args)).unwrap();
+        assert_eq!(result["args"], json!(["/image-default"]));
+        assert_eq!(result["env"], json!(["IMAGE_VALUE=preserved"]));
+        for invalid in [
+            json!({"User":"nobody"}),
+            json!({"Env":["invalid"]}),
+            json!({"WorkingDir":"relative"}),
+        ] {
+            image.set_config(Some(serde_json::from_value(invalid).unwrap()));
+            assert!(process(&image, Some(&override_args)).is_err());
+        }
     }
 }

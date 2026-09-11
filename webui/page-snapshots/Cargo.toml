@@ -1,0 +1,15 @@
+[package]
+name = "firemage-webui-page-snapshots"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde_json.workspace = true
+firemage-wire = { path = "../../crates/wire" }
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }
+firemage-webui-component-controls = { path = "../component-controls" }
+wasm-bindgen.workspace = true
+web-sys = { version = "0.3", features = ["Window", "Document", "HtmlInputElement", "FileList", "File", "Blob"] }

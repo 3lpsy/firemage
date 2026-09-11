@@ -5,4 +5,5 @@ Embedded acceptance tests for disposable Linux infrastructure hosts.
 - Confirmation happens before filesystem or host changes. Without a terminal, `--confirm` is required.
 - Tests execute the current binary without a checkout. Python 3 and runtime tools are required; VM suites use passwordless sudo and `--fixtures-dir`.
 - `--results-dir` retains suite stdout/stderr, daemon/guest logs, and `infra-results.json`, including failures. Temporary state and test-owned host resources are cleaned up.
-- Managed guest cases exercise boot inputs, private TLS OCI pulls with vault credentials, HTTP/TLS policies, upstream credentials, binary tunnels, daemon recovery and snapshots.
+- Managed guests exercise secret files, OCI one-shot/keep-alive commands, userdata ordering, ttyS0 input, separate logs and stopped-disk browsing.
+- Network cases cover HTTP/TLS policies, upstream credentials, binary tunnels and daemon recovery. Snapshot coverage includes bundle upload/download, trust checks, source deletion and cross-VM restore with retained egress policy.

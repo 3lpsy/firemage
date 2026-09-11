@@ -6,10 +6,11 @@ use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
 
 #[component]
-pub(crate) fn LimitsEditor(
+pub fn LimitsEditor(
     vm: Value,
     onclose: EventHandler<()>,
     onsaved: EventHandler<()>,
+    #[props(default)] onapply: Option<EventHandler<Value>>,
 ) -> Element {
     let auth = use_auth();
     let mut draft = use_signal(|| LimitsDraft::from_spec(&vm["spec"]));
@@ -24,6 +25,7 @@ pub(crate) fn LimitsEditor(
                     Ok(spec) => spec,
                     Err(message) => { error.set(message); return; }
                 };
+                if let Some(onapply) = onapply { onapply.call(spec); return; }
                 let path = format!("/v1/vms/{}", text(&vm, "id"));
                 busy.set(true); error.set(String::new());
                 spawn(async move {
@@ -46,9 +48,10 @@ pub(crate) fn LimitsEditor(
                     }
                     p { class: "small muted", "Leave CPU quota blank for 100% per vCPU. Automatic file size covers writable disks and guest memory plus 64 MiB." }
                 }
+                if onapply.is_some() { p { class: "small muted", "Applied changes are saved when you submit the VM form." } }
                 div { class: "actions end",
                     button { r#type: "button", onclick: move |_| onclose.call(()), "Cancel" }
-                    button { r#type: "submit", class: "primary", disabled: busy(), "Save host limits" }
+                    button { r#type: "submit", class: "primary", disabled: busy(), if onapply.is_some() { "Apply to draft" } else { "Save host limits" } }
                 }
             }
         }

@@ -1,0 +1,14 @@
+[package]
+name = "firemage-webui-view-serial"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dioxus.workspace = true
+serde_json.workspace = true
+wasm-bindgen.workspace = true
+gloo-timers.workspace = true
+firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-provider-api = { path = "../provider-api" }
+firemage-webui-provider-auth = { path = "../provider-auth" }

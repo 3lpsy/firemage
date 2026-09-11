@@ -10,6 +10,7 @@ pub async fn seed(
     files: &[BootFile],
     userdata: Option<&str>,
     directory: &Path,
+    maximum: u64,
 ) -> anyhow::Result<Option<PathBuf>> {
     let staging = directory.join("seed");
     match tokio::fs::symlink_metadata(&staging).await {
@@ -28,7 +29,7 @@ pub async fn seed(
         return Ok(None);
     }
     let result = async {
-        let bytes = stage(files, userdata, &staging).await?;
+        let bytes = stage(files, userdata, &staging, maximum).await?;
         let size_mib = 64.max(bytes.div_ceil(1024 * 1024) * 5 / 4 + 16);
         crate::ext4(&staging, &disk, size_mib, "firemage-seed").await?;
         tokio::fs::set_permissions(&disk, std::fs::Permissions::from_mode(0o600)).await?;
@@ -44,10 +45,19 @@ pub async fn seed(
     result?;
     Ok(Some(disk))
 }
-async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> anyhow::Result<u64> {
+async fn stage(
+    files: &[BootFile],
+    userdata: Option<&str>,
+    staging: &Path,
+    maximum: u64,
+) -> anyhow::Result<u64> {
     private_directory(staging).await?;
     let mut setup = String::from("#!/bin/sh\nset -eu\n");
     let mut total = userdata.map_or(0, |value| value.len() as u64);
+    anyhow::ensure!(
+        total <= maximum,
+        "combined guest boot inputs exceed {maximum} bytes"
+    );
     for file in files {
         file.validate()?;
         anyhow::ensure!(
@@ -57,20 +67,22 @@ async fn stage(files: &[BootFile], userdata: Option<&str>, staging: &Path) -> an
         let path = staging.join(&file.path);
         private_directory(path.parent().context("missing seed parent")?).await?;
         let bytes = match file.encoding {
-            firemage_wire::FileEncoding::Utf8 => file.content.as_bytes().to_vec(),
+            firemage_wire::FileEncoding::Utf8 => {
+                std::borrow::Cow::Borrowed(file.content.as_bytes())
+            }
             firemage_wire::FileEncoding::Base64 => {
                 use base64::Engine;
-                base64::engine::general_purpose::STANDARD.decode(&file.content)?
+                std::borrow::Cow::Owned(
+                    base64::engine::general_purpose::STANDARD.decode(&file.content)?,
+                )
             }
         };
+        total = total
+            .checked_add(bytes.len() as u64)
+            .context("combined guest boot inputs are too large")?;
         anyhow::ensure!(
-            bytes.len() as u64 <= firemage_wire::FILE_ASSET_MAX_BYTES,
-            "boot file exceeds 32 MiB"
-        );
-        total += bytes.len() as u64;
-        anyhow::ensure!(
-            total <= firemage_wire::SEED_MAX_BYTES,
-            "combined guest boot inputs exceed 128 MiB"
+            total <= maximum,
+            "combined guest boot inputs exceed {maximum} bytes"
         );
         private_file(&path, &bytes).await?;
         if let Some(destination) = &file.destination {
@@ -117,6 +129,7 @@ async fn private_file(path: &Path, bytes: &[u8]) -> anyhow::Result<()> {
         .open(path)
         .await?;
     file.write_all(bytes).await?;
+    file.flush().await?;
     Ok(())
 }
 

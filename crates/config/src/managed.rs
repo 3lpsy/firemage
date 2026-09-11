@@ -232,6 +232,9 @@ fn normalized(config: &Server) -> anyhow::Result<serde_json::Value> {
     config.database = Some(config.database());
     config.kernel_dir = Some(config.kernel_dir());
     config.asset_dir = Some(config.asset_dir());
+    config.asset_max_bytes = Some(config.asset_max_bytes());
+    config.snapshot_dir = Some(config.snapshot_dir());
+    config.snapshot_max_bytes = Some(config.snapshot_max_bytes());
     config.session_ttl = Some(config.session_ttl()? as u64);
     if config.unix_socket.is_none() && config.listen.is_none() {
         config.listen = Some("127.0.0.1:8080".into());

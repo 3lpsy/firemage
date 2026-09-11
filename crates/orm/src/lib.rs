@@ -10,3 +10,5 @@ pub mod secrets;
 pub mod kernel_aliases;
 
 pub mod file_assets;
+
+pub mod snapshots;

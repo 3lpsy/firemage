@@ -37,7 +37,7 @@ pub async fn insert_file_asset(
     }
     .validate()?;
     anyhow::ensure!(
-        (0..=firemage_wire::FILE_ASSET_MAX_BYTES as i64).contains(&row.size_bytes)
+        row.size_bytes >= 0
             && row.sha256.len() == 64
             && row.sha256.bytes().all(|b| b.is_ascii_hexdigit()),
         "invalid asset metadata"

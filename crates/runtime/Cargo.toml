@@ -8,10 +8,12 @@ license.workspace = true
 base64 = "0.22"
 hex.workspace = true
 firemage-catalog-files = { path = "../catalog-files" }
+firemage-snapshots = { path = "../snapshots" }
 firemage-kernels = { path = "../kernels" }
 anyhow.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
+toml.workspace = true
 sha2.workspace = true
 uuid.workspace = true
 firemage-wire = { path = "../wire" }
@@ -26,5 +28,7 @@ libc = "0.2"
 firemage-egress-proxy = { path = "../egress-proxy" }
 firemage-secrets = { path = "../secrets" }
 
-[dev-dependencies]
 tempfile.workspace = true
+
+[dev-dependencies]
+axum.workspace = true

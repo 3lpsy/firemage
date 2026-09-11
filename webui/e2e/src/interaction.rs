@@ -53,6 +53,29 @@ impl Harness {
             .await?
             .context("input has no value")
     }
+    // Options may arrive after the select renders. SelectElement silently succeeds on no match.
+    pub async fn select_value(&self, id: &str, value: &str) -> Result<()> {
+        let select = self.element(By::Id(id)).await?;
+        select.scroll_into_view().await?;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+        loop {
+            for option in select.find_all(By::Tag("option")).await? {
+                if option.prop("value").await?.as_deref() == Some(value) {
+                    option.click().await?;
+                    anyhow::ensure!(
+                        select.prop("value").await?.as_deref() == Some(value),
+                        "select {id} did not retain option {value}"
+                    );
+                    return Ok(());
+                }
+            }
+            anyhow::ensure!(
+                tokio::time::Instant::now() < deadline,
+                "option {value} did not load in select {id}"
+            );
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }
     pub async fn navigate(&self, page: &str) -> Result<()> {
         self.element(By::XPath(format!(
             "//aside[contains(@class,'sidebar')]//button[contains(normalize-space(.),'{page}')]"

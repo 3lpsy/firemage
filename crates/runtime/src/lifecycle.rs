@@ -26,6 +26,9 @@ impl Runtime {
                         row = firemage_queries::set_vm_state(&self.db,row.clone(),"starting",None,None).await?;
                         self.launch(&row).await?;
                         if !is_launch { self.prepare(&row,&fc).await?; }
+                    } else if spec.security.mode == firemage_wire::IsolationMode::Trusted && spec.socket.is_none() && self.is_preparation_required(&fc).await? {
+                        row = firemage_queries::set_vm_state(&self.db,row.clone(),"starting",None,row.pid).await?;
+                        self.prepare(&row,&fc).await?;
                     }
                     if is_start { fc.call("PUT","/actions",json!({"action_type":"InstanceStart"})).await?; Ok("running") } else { Ok("ready") }
                 },
@@ -100,7 +103,7 @@ impl Runtime {
             }
         }
     }
-    async fn stop_process(&self, row: &firemage_orm::vms::Model) -> anyhow::Result<()> {
+    pub(crate) async fn stop_process(&self, row: &firemage_orm::vms::Model) -> anyhow::Result<()> {
         let mut children = self.children.lock().await;
         if let Some(child) = children.get_mut(&row.id) {
             child.kill().await?;
@@ -155,6 +158,7 @@ impl Runtime {
             row.state == "stopped",
             "file extraction requires a stopped VM"
         );
+        self.ensure_stopped_process(&row).await?;
         let destination = self
             .directory(id)
             .join(format!("extract-{}", uuid::Uuid::new_v4()));

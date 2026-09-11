@@ -52,9 +52,10 @@ pub fn router(app: App) -> Router {
             get(crate::file_assets::list)
                 .post(crate::file_assets::upload)
                 .layer(DefaultBodyLimit::max(
-                    firemage_wire::FILE_ASSET_MAX_BYTES as usize,
+                    app.runtime.config.asset_max_bytes() as usize
                 )),
         )
+        .route("/v1/assets/limits", get(crate::file_assets::limits))
         .route(
             "/v1/assets/{id}",
             axum::routing::put(crate::file_assets::alias).delete(crate::file_assets::delete),
@@ -71,6 +72,27 @@ pub fn router(app: App) -> Router {
             axum::routing::put(crate::kernels::upload).layer(DefaultBodyLimit::max(
                 firemage_wire::KERNEL_MAX_BYTES as usize,
             )),
+        )
+        .route(
+            "/v1/snapshots",
+            get(crate::snapshots::list)
+                .post(crate::snapshots::upload)
+                .layer(DefaultBodyLimit::disable()),
+        )
+        .route("/v1/snapshots/limits", get(crate::snapshots::limits))
+        .route(
+            "/v1/snapshots/{id}",
+            axum::routing::delete(crate::snapshots::delete),
+        )
+        .route(
+            "/v1/snapshots/{id}/download",
+            get(crate::snapshots::download),
+        )
+        .route("/v1/snapshots/{id}/trust", post(crate::snapshots::trust))
+        .route("/v1/vms/{id}/snapshots", post(crate::snapshots::save))
+        .route(
+            "/v1/vms/{id}/snapshots/restore",
+            post(crate::snapshots::restore),
         )
         .route("/v1/secrets", get(crate::secrets::list))
         .route(
@@ -96,21 +118,48 @@ pub fn router(app: App) -> Router {
             "/v1/vms",
             get(resources::list_vms).post(resources::create_vm),
         )
+        .route("/v1/vm-config/preview", post(crate::vm_config::preview))
+        .route("/v1/vm-config/import", post(crate::vm_config::import))
+        .route(
+            "/v1/vms/{id}/config",
+            get(crate::vm_config::export).put(crate::vm_config::import_existing),
+        )
+        .route(
+            "/v1/vms/{id}/config/preview",
+            post(crate::vm_config::preview_existing),
+        )
         .route(
             "/v1/vms/{id}",
             get(resources::get_vm)
                 .put(resources::update_vm)
                 .delete(resources::delete_vm),
         )
+        .route("/v1/vms/{id}/attachments", get(crate::attachments::list))
+        .route("/v1/vms/{id}/duplicate", post(crate::duplicate::duplicate))
         .route("/v1/vms/{id}/actions", post(resources::action))
         .route("/v1/vms/{id}/firecracker", post(resources::raw))
         .route("/v1/vms/{id}/files", get(resources::output))
-        .route("/v1/vms/{id}/logs", get(resources::logs))
+        .route("/v1/vms/{id}/directory", get(crate::guest_files::directory))
+        .route(
+            "/v1/vms/{id}/files/download",
+            get(crate::guest_files::download),
+        )
+        .route("/v1/vms/{id}/logs", get(crate::logs::read))
+        .route(
+            "/v1/vms/{id}/terminal",
+            get(crate::terminal::status)
+                .post(crate::terminal::input)
+                .layer(DefaultBodyLimit::max(32 * 1024)),
+        )
         .route("/v1/vms/{id}/egress", get(crate::egress::status))
         .route("/v1/egress/ca", get(crate::egress::ca))
         .route(
             "/v1/networks",
             get(resources::list_networks).post(resources::create_network),
+        )
+        .route(
+            "/v1/networks/{name}/suggestion",
+            get(crate::addressing::suggestion),
         )
         .route(
             "/v1/networks/{name}",

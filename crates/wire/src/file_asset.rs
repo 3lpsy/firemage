@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-pub const FILE_ASSET_MAX_BYTES: u64 = 32 * 1024 * 1024;
-pub const SEED_MAX_BYTES: u64 = 128 * 1024 * 1024;
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct FileAssetLimits {
+    pub max_bytes: u64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FileAsset {

@@ -1,6 +1,7 @@
 //! VM environment editor with explicit plain values and secret references.
 mod editor;
 use dioxus::prelude::*;
+pub use editor::EnvironmentEditor;
 use firemage_webui_component_controls::*;
 use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;

@@ -73,6 +73,7 @@ async fn extract_with(command: &mut Command, output: &Path) -> anyhow::Result<()
         );
         let mut file = tokio::fs::File::create(output).await?;
         file.write_all(&bytes).await?;
+        file.flush().await?;
         anyhow::Ok(())
     })
     .await;

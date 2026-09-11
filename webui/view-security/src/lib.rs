@@ -1,5 +1,6 @@
 //! Host isolation and process limits in the VM inspector.
 mod editor;
+pub use editor::LimitsEditor;
 mod mode;
 mod model;
 use dioxus::prelude::*;

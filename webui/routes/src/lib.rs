@@ -2,6 +2,7 @@
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Page {
     Vms,
+    Snapshots,
     Networks,
     Kernels,
     Assets,
@@ -16,6 +17,7 @@ impl Page {
     pub fn label(self) -> &'static str {
         match self {
             Self::Vms => "Virtual machines",
+            Self::Snapshots => "Snapshots",
             Self::Networks => "Networks",
             Self::Kernels => "Kernels",
             Self::Assets => "Assets",
@@ -33,12 +35,13 @@ impl Page {
 }
 
 mod navigation;
-pub use navigation::use_page;
+pub use navigation::{navigate, navigate_vm, navigate_vm_editor, use_page, use_vm_id};
 
 impl Page {
     pub fn slug(self) -> &'static str {
         match self {
             Self::Vms => "vms",
+            Self::Snapshots => "snapshots",
             Self::Networks => "networks",
             Self::Kernels => "kernels",
             Self::Assets => "assets",
@@ -52,6 +55,7 @@ impl Page {
     }
     pub fn from_slug(slug: &str) -> Self {
         match slug {
+            "snapshots" => Self::Snapshots,
             "networks" => Self::Networks,
             "kernels" => Self::Kernels,
             "assets" => Self::Assets,

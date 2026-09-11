@@ -44,8 +44,8 @@ pub async fn kernels(h: &Harness) -> Result<()> {
         .await?;
     h.element(By::Css("#vm-kernel:focus")).await?;
     h.fill("vm-rootfs", &h.asset("rootfs.ext4")).await?;
-    h.modal_button("Create VM").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Create VM").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
     let vms = h.api("/v1/vms").await?;
     let vm = vms
         .as_array()

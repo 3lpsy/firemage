@@ -1,6 +1,7 @@
 # view-vm-detail
 
-VM inspector with lifecycle controls, host security, egress, environment, boot inputs, logs, output files, metadata, and raw Firecracker access.
+VM sidebar and full page with configuration transfer, attachments, lifecycle controls, host security, egress, environment, boot inputs, guest serial, terminal access, Firecracker diagnostics, output files, metadata, and raw Firecracker access.
 
 - `view` crate in the desktop web UI.
-- Shared by the authenticated app shell and its resource pages.
+- Full pages use `#vms/{id}` and share tabs with the inventory sidebar.
+- Start prepares automatically; manual Launch appears only for eligible VM definitions.

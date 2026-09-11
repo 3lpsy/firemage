@@ -17,6 +17,10 @@ pub async fn registry(h: &Harness) -> Result<()> {
     h.radio("asset-source", "OCI image").await?;
     h.fill("vm-rootfs", "registry.example.com/jobs/runner:review")
         .await?;
+    h.element(By::Css(".vm-form-registry > summary"))
+        .await?
+        .click()
+        .await?;
     h.radio("registry-auth", "Bearer token").await?;
     SelectElement::new(&h.element(By::Id("registry-token")).await?)
         .await?
@@ -31,8 +35,8 @@ pub async fn registry(h: &Harness) -> Result<()> {
     h.fill("registry-realm", "https://auth.example.com/token")
         .await?;
     h.screenshot("oci-registry").await?;
-    h.modal_button("Create VM").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Create VM").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
     let vms = h.api("/v1/vms").await?;
     let registry = &vms[0]["spec"]["rootfs"]["registry"];
     anyhow::ensure!(
@@ -44,6 +48,7 @@ pub async fn registry(h: &Harness) -> Result<()> {
             && !vms.to_string().contains("browser-registry-private-value"),
         "registry configuration lost references, retained inactive auth, or exposed a secret"
     );
+    h.navigate("Virtual machines").await?;
     h.button("private-image").await?;
     h.button("Configure VM").await?;
     h.button("Full TOML").await?;
@@ -52,8 +57,8 @@ pub async fn registry(h: &Harness) -> Result<()> {
         .context("VM configuration must be a table")?
         .insert("memory_mib".into(), 768.into());
     h.fill("vm-toml", &toml::to_string_pretty(&spec)?).await?;
-    h.modal_button("Save configuration").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("Save configuration").await?;
+    h.absent(By::Css(".vm-editor-page")).await?;
     let edited = h.api("/v1/vms").await?;
     anyhow::ensure!(
         edited[0]["spec"]["rootfs"]["registry"] == *registry,

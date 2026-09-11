@@ -1,6 +1,7 @@
 use crate::Runtime;
+use anyhow::Context;
 use base64::Engine;
-use firemage_wire::{BootFile, FileEncoding, SEED_MAX_BYTES, VmSpec};
+use firemage_wire::{BootFile, FileEncoding, VmSpec};
 
 impl Runtime {
     pub(crate) async fn validate_asset_attachments(
@@ -13,21 +14,29 @@ impl Runtime {
             attachment.validate()?;
             let row = firemage_queries::file_asset(&self.db, owner, &attachment.asset_id).await?;
             self.file_catalog()?.file(&row.id)?;
-            total += row.size_bytes as u64;
+            total = total
+                .checked_add(row.size_bytes as u64)
+                .ok_or_else(|| anyhow::anyhow!("combined guest boot inputs are too large"))?;
         }
         for file in &spec.files {
-            total += match file.encoding {
-                FileEncoding::Utf8 => file.content.len() as u64,
-                FileEncoding::Base64 => (file.content.len() as u64).div_ceil(4) * 3,
-            };
+            total = total
+                .checked_add(match file.encoding {
+                    FileEncoding::Utf8 => file.content.len() as u64,
+                    FileEncoding::Base64 => (file.content.len() as u64).div_ceil(4) * 3,
+                })
+                .context("combined guest boot inputs are too large")?;
         }
-        total += spec
-            .userdata
-            .as_ref()
-            .map_or(0, |script| script.len() as u64);
+        total = total
+            .checked_add(
+                spec.userdata
+                    .as_ref()
+                    .map_or(0, |script| script.len() as u64),
+            )
+            .context("combined guest boot inputs are too large")?;
         anyhow::ensure!(
-            total <= SEED_MAX_BYTES,
-            "combined guest boot inputs exceed 128 MiB"
+            total <= self.config.seed_max_bytes(),
+            "combined guest boot inputs exceed {} bytes",
+            self.config.seed_max_bytes()
         );
         Ok(())
     }

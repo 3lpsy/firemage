@@ -24,3 +24,5 @@ firemage-webui-page-host = { path = "../page-host" }
 
 wasm-bindgen.workspace = true
 firemage-webui-page-secrets = { path = "../page-secrets" }
+
+firemage-webui-page-snapshots = { path = "../page-snapshots" }
