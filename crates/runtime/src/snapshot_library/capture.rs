@@ -128,7 +128,7 @@ impl Runtime {
         for name in names {
             files.insert(name, empty());
         }
-        let network = if let Some(net) = &spec.network {
+        let network: Option<firemage_wire::NetworkSpec> = if let Some(net) = &spec.network {
             Some(serde_json::from_str(
                 &firemage_queries::network(&self.db, owner, &net.network)
                     .await?
@@ -142,6 +142,10 @@ impl Runtime {
         } else {
             None
         };
+        let mut spec = spec;
+        if let (Some(attachment), Some(definition)) = (&mut spec.network, &network) {
+            attachment.network = definition.name.clone();
+        }
         let manifest = SnapshotManifest {
             version: 1,
             source_vm_name: spec.name.clone(),

@@ -57,6 +57,9 @@ impl Directory {
             maximum,
         })
     }
+    pub(crate) fn maximum(&self) -> u64 {
+        self.maximum
+    }
     fn path(&self) -> PathBuf {
         PathBuf::from(format!("/proc/self/fd/{}", self.directory.as_raw_fd()))
     }

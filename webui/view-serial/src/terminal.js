@@ -38,7 +38,11 @@ export function mountTerminal(containerId, statusId, actionId, id, csrf) {
     status.textContent = message;
     status.dataset.state = state;
     status.title = detail;
-    action.textContent = label;
+    action.title = `${label} TTY stream`;
+    action.setAttribute("aria-label", action.title);
+    for (const icon of action.querySelectorAll("[data-connection-icon]")) {
+      icon.hidden = icon.dataset.connectionIcon !== (label === "Disconnect" ? "disconnect" : "connect");
+    }
   };
   const disconnect = () => {
     if (session) {

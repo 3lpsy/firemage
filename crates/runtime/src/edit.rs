@@ -9,6 +9,7 @@ impl Runtime {
         self.normalize_kernel(&mut spec)?;
         self.ensure_isolation_policy(&spec)?;
         let _network_guard = self.lock("networks").await;
+        self.normalize_network(owner, &mut spec).await?;
         self.validate_dependencies(owner, &spec).await?;
         let row = self
             .refresh(firemage_queries::vm(&self.db, owner, id).await?)
@@ -69,3 +70,7 @@ impl Runtime {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "edit/tests.rs"]
+mod tests;

@@ -10,7 +10,7 @@ pub fn NetworkEditor(
     onsaved: EventHandler<()>,
 ) -> Element {
     let auth = use_auth();
-    let original = initial["name"].as_str().map(str::to_owned);
+    let original = initial["id"].as_str().map(str::to_owned);
     let editing = original.is_some();
     let name = use_signal(|| text(&initial, "name"));
     let mut subnet = use_signal(|| {
@@ -74,7 +74,7 @@ pub fn NetworkEditor(
                         id: "network-name",
                         value: name,
                         required: true,
-                        disabled: editing,
+                        disabled: busy(),
                     }
                     div { class: "form-grid",
                         label { class: "field", span { "IPv4 subnet" }

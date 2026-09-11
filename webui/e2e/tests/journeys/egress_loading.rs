@@ -24,14 +24,19 @@ pub async fn catalog_switching(h: &Harness) -> Result<()> {
     .await?;
     loading(h, "Upstream proxies").await?;
     release(h, "/v1/egress/proxies", Value::Null, 200).await?;
-    h.button("shared-exit").await?;
+    h.element(By::LinkText("shared-exit"))
+        .await?
+        .click()
+        .await?;
     let proxies = h.api("/v1/egress/proxies").await?;
     let id = proxies[0]["id"].as_str().expect("proxy id");
     let detail = format!("/v1/egress/proxies/{id}");
     pending(h, &detail).await?;
     ensure!(
         h.driver
-            .find_all(By::Css(".egress-catalog-drawer button"))
+            .find_all(By::Css(
+                ".egress-catalog-drawer button:not([aria-label='Close egress details'])"
+            ))
             .await?
             .is_empty(),
         "loading details retained actions from another resource"
@@ -60,10 +65,8 @@ pub async fn catalog_switching(h: &Harness) -> Result<()> {
     h.button("Refresh egress").await?;
     pending(h, "/v1/egress/policies").await?;
     release(h, "/v1/egress/policies", Value::Null, 200).await?;
-    h.element(By::XPath(
-        "//table//button[normalize-space(.)='shared-review']",
-    ))
-    .await?;
+    h.element(By::XPath("//table//a[normalize-space(.)='shared-review']"))
+        .await?;
     h.driver.execute(
         "window.fetch = window.__egressFetch.original; for (const request of window.__egressFetch.pending) request.release(null); delete window.__egressFetch",
         vec![],

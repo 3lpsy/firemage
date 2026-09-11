@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use firemage_webui_component_controls::{CopyButton, CopySource, Info, Notice};
+use firemage_webui_component_controls::{CopyButton, CopySource, Icon, Info, Notice};
 use firemage_webui_provider_api::get;
 
 #[component]
@@ -13,6 +13,11 @@ pub fn LogOutput(id: String, stream: String, #[props(default)] tabs: Option<Elem
         "Copy Firecracker logs"
     } else {
         "Copy serial output"
+    };
+    let refresh_label = if stream == "firecracker" {
+        "Refresh Firecracker logs"
+    } else {
+        "Refresh serial output"
     };
     let mut refresh = use_signal(|| 0u32);
     let mut legacy = use_signal(|| false);
@@ -33,28 +38,38 @@ pub fn LogOutput(id: String, stream: String, #[props(default)] tabs: Option<Elem
         }
     });
     rsx! {
-        div { class: if tabs.is_some() { "serial-toolbar" } else { "heading compact" },
+        div { class: if tabs.is_some() { "serial-toolbar" } else { "heading compact vm-tab-heading" },
             if let Some(tabs) = tabs.clone() { {tabs} }
             else { h3 { if legacy() { "Legacy combined output" } else { "{title}" } } }
             div { class: "serial-actions",
-                button { onclick: move |_| output.restart(), "Refresh" }
                 if tabs.is_some() {
                     Info { title: "Serial output", "Captured guest ttyS0 output, refreshed automatically. Programs must write to the guest console to appear here. Firecracker diagnostics have their own tab." }
                 }
             }
         }
         if tabs.is_some() && legacy() { h3 { "Legacy combined output" } }
+        if let Some(Ok(value)) = output.read().as_ref() {
+            if value["legacy_available"] == true {
+                button { onclick: move |_| legacy.toggle(),
+                    if legacy() { "Back to separate stream" } else { "View legacy combined output" }
+                }
+                if legacy() {
+                    p { class: "muted small", "Earlier runs combined guest serial and Firecracker diagnostics. New capture separates them after the VM stops and starts." }
+                }
+            }
+        }
+        div { class: "actions end",
+            button {
+                class: "icon-button", r#type: "button", title: refresh_label,
+                "aria-label": refresh_label, onclick: move |_| output.restart(),
+                Icon { name: "refresh" }
+            }
+            if let Some(Ok(value)) = output.read().as_ref() {
+                CopyButton { source: CopySource::Text(value["text"].as_str().unwrap_or_default().to_owned()), label: copy_label }
+            }
+        }
         match output.read().as_ref() {
             Some(Ok(value)) => rsx! {
-                if value["legacy_available"] == true {
-                    button { onclick: move |_| legacy.toggle(),
-                        if legacy() { "Back to separate stream" } else { "View legacy combined output" }
-                    }
-                    if legacy() {
-                        p { class: "muted small", "Earlier runs combined guest serial and Firecracker diagnostics. New capture separates them after the VM stops and starts." }
-                    }
-                }
-                div { class: "actions end", CopyButton { source: CopySource::Text(value["text"].as_str().unwrap_or_default().to_owned()), label: copy_label } }
                 pre { class: "console", r#"{value["text"].as_str().filter(|text| !text.is_empty()).unwrap_or("No output yet.")}"# }
                 if let Some(stderr) = value["stderr"].as_str().filter(|text| !text.is_empty()) {
                     h3 { "Process stderr" }

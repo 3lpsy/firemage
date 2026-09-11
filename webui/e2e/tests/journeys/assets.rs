@@ -13,7 +13,13 @@ pub async fn assets(h: &Harness) -> Result<()> {
     h.absent(By::Css("[role='dialog']")).await?;
     h.navigate("Assets").await?;
     h.text("No assets yet").await?;
-    h.button("Upload asset").await?;
+    h.absent(By::Id("asset-upload-section")).await?;
+    h.button("+ Add asset").await?;
+    h.element(By::Id("asset-upload-section")).await?;
+    h.fill("asset-alias", "discarded-draft").await?;
+    h.modal_button("Cancel").await?;
+    h.absent(By::Css("[role='dialog']")).await?;
+    h.button("+ Add asset").await?;
     h.fill("asset-alias", "review-config").await?;
     let source = tempfile::NamedTempFile::new()?;
     std::fs::write(source.path(), b"review configuration")?;
@@ -21,8 +27,14 @@ pub async fn assets(h: &Harness) -> Result<()> {
         .await?
         .send_keys(source.path().to_string_lossy().as_ref())
         .await?;
-    h.button("Upload").await?;
-    h.text("Uploaded review-config.").await?;
+    h.screenshot("asset-upload-dialog").await?;
+    h.modal_button("Add asset").await?;
+    h.absent(By::Id("asset-upload-section")).await?;
+    h.text("review-config").await?;
+    anyhow::ensure!(
+        h.driver.current_url().await?.fragment() == Some("assets"),
+        "successful upload did not return to the asset list"
+    );
     let before = h.api("/v1/assets").await?;
     let asset = before
         .as_array()
@@ -36,12 +48,13 @@ pub async fn assets(h: &Harness) -> Result<()> {
     let id = asset["id"].as_str().context("asset ID")?.to_owned();
 
     // A duplicate upload must retain the original file and show the server error.
+    h.button("+ Add asset").await?;
     h.fill("asset-alias", "review-config").await?;
     h.element(By::Id("asset-file"))
         .await?
         .send_keys(source.path().to_string_lossy().as_ref())
         .await?;
-    h.button("Upload").await?;
+    h.modal_button("Add asset").await?;
     h.element(By::Css("#asset-upload-section [role='alert']"))
         .await?;
     anyhow::ensure!(
@@ -53,7 +66,19 @@ pub async fn assets(h: &Harness) -> Result<()> {
             == 1,
         "duplicate alias created another asset"
     );
-    h.button("Clear").await?;
+    h.button("Cancel").await?;
+    h.element(By::Id("asset-search")).await?;
+    h.button("+ Add asset").await?;
+    h.radio("asset-source", "Remote URL").await?;
+    h.fill("asset-alias", "remote-config").await?;
+    h.fill("asset-import-url", "https://127.0.0.1/config.json")
+        .await?;
+    h.fill("asset-import-filename", "config.json").await?;
+    h.modal_button("Add asset").await?;
+    h.text("public destination").await?;
+    h.screenshot("asset-remote-dialog").await?;
+    h.modal_button("Cancel").await?;
+    h.absent(By::Css("[role='dialog']")).await?;
     h.navigate("Virtual machines").await?;
     h.button("+ Create VM").await?;
     h.fill("vm-name", "asset-review").await?;
@@ -158,7 +183,7 @@ pub async fn assets(h: &Harness) -> Result<()> {
         .await?
         .error_for_status()?;
     h.navigate("Virtual machines").await?;
-    h.button("asset-review").await?;
+    h.vm_details("asset-review").await?;
     h.button("Attachments").await?;
     h.text("worker-config").await?;
     h.text("review-credentials").await?;

@@ -38,7 +38,8 @@ impl Page {
 
 mod navigation;
 pub use navigation::{
-    navigate, navigate_vm, navigate_vm_editor, use_egress_path, use_page, use_vm_id,
+    navigate, navigate_vm, navigate_vm_editor, use_egress_path, use_page, use_snapshot_id,
+    use_vm_id,
 };
 
 impl Page {

@@ -9,6 +9,7 @@ pub async fn kernels(h: &Harness) -> Result<()> {
     let source = tempfile::NamedTempFile::new()?;
     std::fs::write(source.path(), b"uploaded browser kernel")?;
     h.button("+ Add kernel").await?;
+    h.fill("kernel-add-alias", "Browser kernel").await?;
     h.radio("kernel-source", "Remote URL").await?;
     h.fill("kernel-url", "https://example.com/kernel").await?;
     h.fill("kernel-sha", "invalid-checksum").await?;
@@ -81,15 +82,15 @@ pub async fn kernels(h: &Harness) -> Result<()> {
         "API deleted referenced kernel"
     );
     h.row_button("uploaded-kernel", "Edit alias").await?;
-    h.fill("kernel-alias", "").await?;
+    h.fill("kernel-alias", "Renamed kernel").await?;
     h.modal_button("Save alias").await?;
     h.absent(By::Css("[role='dialog']")).await?;
     anyhow::ensure!(
         h.api("/v1/vms").await?[0]["spec"]["kernel"]["name"] == "uploaded-kernel",
-        "clearing alias changed VM identity"
+        "renaming alias changed VM identity"
     );
     h.navigate("Virtual machines").await?;
-    h.button("kernel-selection").await?;
+    h.vm_details("kernel-selection").await?;
     h.button("Delete VM").await?;
     h.modal_button("Delete VM").await?;
     h.text("No virtual machines yet").await?;

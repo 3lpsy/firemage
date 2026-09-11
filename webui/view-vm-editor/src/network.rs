@@ -12,6 +12,16 @@ pub fn NetworkFields(fields: Fields, vm_id: String) -> Element {
         ..
     } = fields;
     let networks = use_resource(|| async { get("/v1/networks").await });
+    use_effect(move || {
+        let reference = network();
+        if let Some(Ok(rows)) = networks.read().as_ref()
+            && let Some(rows) = rows.as_array()
+            && !rows.iter().any(|row| text(row, "id") == reference)
+            && let Some(row) = rows.iter().find(|row| text(row, "name") == reference)
+        {
+            network.set(text(row, "id"));
+        }
+    });
     let suggestion = use_resource(move || {
         let network = network();
         let vm_id = vm_id.clone();
@@ -50,10 +60,10 @@ pub fn NetworkFields(fields: Fields, vm_id: String) -> Element {
             select { id: "vm-network", value: network(), onchange: move |event| {
                 network.set(event.value()); address.set(String::new()); mac.set(String::new());
             },
-                option { value: "", "No network" }
+                option { value: "", selected: network().is_empty(), "No network" }
                 if let Some(Ok(rows)) = networks.read().as_ref() {
                     for row in rows.as_array().into_iter().flatten() {
-                        option { value: text(row, "name"), "{text(row, \"name\")}" }
+                        option { value: text(row, "id"), selected: network() == text(row, "id"), "{text(row, \"name\")}" }
                     }
                 }
             }

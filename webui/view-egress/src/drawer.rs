@@ -26,8 +26,23 @@ pub fn Drawer(
             detail.restart();
         }
     });
+    let title = detail
+        .read()
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|value| text(value, "alias"))
+        .unwrap_or_else(|| {
+            if kind == "proxies" {
+                "Upstream proxy".into()
+            } else {
+                "Egress policy".into()
+            }
+        });
     rsx! {
         aside { class: "egress-catalog-drawer", "aria-label": "Egress details",
+            div { class: "heading compact", h2 { "{title}" }
+                button { class: "icon-button", title: "Close egress details", "aria-label": "Close egress details", onclick: move |_| onclose.call(()), Icon { name: "close" } }
+            }
             match detail.read().as_ref() {
                 Some(Ok(value)) => {
                     let value = value.clone();
@@ -35,9 +50,6 @@ pub fn Drawer(
                     let edit_value = value.clone();
                     let delete_value = value.clone();
                     rsx! {
-                        div { class: "heading compact", h2 { "{text(&value,\"alias\")}" }
-                            button { class: "icon-button", "aria-label": "Close egress details", onclick: move |_| onclose.call(()), Icon { name: "close" } }
-                        }
                         Notice { message: error() }
                         if auth.is_admin() { button { class: "primary", onclick: move |_| onedit.call(edit_value.clone()), if kind == "proxies" { "Edit proxy" } else { "Edit policy" } } }
                         dl { class: "egress-facts",
@@ -71,7 +83,7 @@ pub fn Drawer(
                         } }
                     }
                 },
-                Some(Err(message)) => rsx! { Notice { message: message.clone() } button { onclick: move |_| onclose.call(()), "Close" } },
+                Some(Err(message)) => rsx! { Notice { message: message.clone() } },
                 None => rsx! { p { "Loading details…" } },
             }
         }

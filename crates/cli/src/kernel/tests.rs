@@ -3,25 +3,35 @@ use clap::Parser;
 use super::Command;
 
 #[test]
-fn alias_requires_a_value_or_explicit_clear() {
-    assert!(crate::args::Cli::try_parse_from(["firemage", "kernel", "alias", "vmlinux"]).is_err());
+fn aliases_are_required_for_catalog_mutations() {
+    for arguments in [
+        vec!["firemage", "kernel", "alias", "vmlinux"],
+        vec!["firemage", "kernel", "alias", "vmlinux", "--clear"],
+        vec!["firemage", "kernel", "upload", "vmlinux"],
+        vec![
+            "firemage",
+            "kernel",
+            "download",
+            "vmlinux",
+            "https://example.com/kernel",
+            "--sha256",
+            "hash",
+        ],
+    ] {
+        assert!(crate::args::Cli::try_parse_from(arguments).is_err());
+    }
+    let parsed =
+        crate::args::Cli::try_parse_from(["firemage", "kernel", "alias", "vmlinux", "stable"])
+            .unwrap();
+    assert!(
+        matches!(parsed.command, crate::args::Command::Kernel(Command::Alias { alias, .. }) if alias == "stable")
+    );
     assert!(
         crate::args::Cli::try_parse_from([
-            "firemage", "kernel", "alias", "vmlinux", "stable", "--clear"
+            "firemage", "kernel", "upload", "vmlinux", "--alias", "stable"
         ])
-        .is_err()
+        .is_ok()
     );
-    let parsed =
-        crate::args::Cli::try_parse_from(["firemage", "kernel", "alias", "vmlinux", "--clear"])
-            .unwrap();
-    assert!(matches!(
-        parsed.command,
-        crate::args::Command::Kernel(Command::Alias {
-            alias: None,
-            clear: true,
-            ..
-        })
-    ));
 }
 
 #[test]

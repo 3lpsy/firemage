@@ -66,6 +66,10 @@ pub fn use_egress_path() -> Signal<String> {
     use_path("#egress/")
 }
 
+pub fn use_snapshot_id() -> Signal<String> {
+    use_path("#snapshots/")
+}
+
 fn use_path(prefix: &'static str) -> Signal<String> {
     let mut id = use_signal(|| current_path(prefix));
     let listener = use_hook(move || {

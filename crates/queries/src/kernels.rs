@@ -10,11 +10,11 @@ pub async fn set_kernel_alias(
     alias: Option<&str>,
 ) -> anyhow::Result<()> {
     firemage_wire::ensure_kernel_name(name)?;
-    firemage_wire::KernelAlias {
-        alias: alias.map(str::to_owned),
-    }
-    .validate()?;
     if let Some(alias) = alias {
+        firemage_wire::KernelAlias {
+            alias: Some(alias.to_owned()),
+        }
+        .validate()?;
         kernel_aliases::Entity::insert(kernel_aliases::ActiveModel {
             name: Set(name.into()),
             alias: Set(alias.into()),

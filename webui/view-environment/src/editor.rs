@@ -28,18 +28,10 @@ pub fn EnvironmentEditor(
             form { class: "modal-form", onsubmit: move |event| {
                 event.prevent_default();
                 if busy() { return; }
-                let mut environment = serde_json::Map::new();
-                for (name, value) in rows.read().iter() {
-                    if name.is_empty() || !name.bytes().enumerate().all(|(index, byte)| byte == b'_' || byte.is_ascii_alphabetic() || index > 0 && byte.is_ascii_digit()) {
-                        error.set("Environment names must start with a letter or underscore and contain only letters, digits, and underscores.".into()); return;
-                    }
-                    if value.is_object() && value["secret"].as_str().is_none_or(str::is_empty) {
-                        error.set(format!("Choose a secret for {name}.")); return;
-                    }
-                    if environment.insert(name.clone(), value.clone()).is_some() {
-                        error.set(format!("Duplicate environment variable: {name}.")); return;
-                    }
-                }
+                let environment = match crate::mutation::validate_rows(&rows.read()) {
+                    Ok(environment) => environment,
+                    Err(message) => { error.set(message); return; }
+                };
                 let mut spec = vm["spec"].clone();
                 spec["environment"] = Value::Object(environment);
                 if let Some(onapply) = onapply { onapply.call(spec); return; }

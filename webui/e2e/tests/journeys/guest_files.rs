@@ -21,7 +21,7 @@ pub async fn navigate(h: &Harness) -> Result<()> {
         .await?;
     h.navigate("Networks").await?;
     h.navigate("Virtual machines").await?;
-    h.button("snapshot-target").await?;
+    h.vm_details("snapshot-target").await?;
     h.button("Files").await?;
     h.element(By::Css(".guest-file-table tbody tr")).await?;
     anyhow::ensure!(

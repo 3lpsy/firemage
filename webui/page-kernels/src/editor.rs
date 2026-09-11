@@ -9,6 +9,7 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
     let auth = use_auth();
     let mut source = use_signal(|| "upload".to_owned());
     let mut name = use_signal(String::new);
+    let alias = use_signal(String::new);
     let url = use_signal(String::new);
     let sha = use_signal(String::new);
     let mut bytes = use_signal(|| None::<Vec<u8>>);
@@ -25,9 +26,9 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
                 busy.set(true); error.set(String::new());
                 spawn(async move {
                     let result = if let Some(body) = body {
-                        upload(&format!("/v1/kernels/{}/content", encode(&name())), &body, &auth.csrf()).await
+                        upload(&format!("/v1/kernels/{}/content?alias={}", encode(&name()), encode(&alias())), &body, &auth.csrf()).await
                     } else {
-                        request("POST", "/v1/kernels/import", Some(json!({"name":name(), "url":url(), "sha256":sha()})), &auth.csrf()).await
+                        request("POST", "/v1/kernels/import", Some(json!({"name":name(), "url":url(), "sha256":sha(), "alias":alias()})), &auth.csrf()).await
                     };
                     match result { Ok(_) => onsaved.call(()), Err(message) => error.set(message) }
                     busy.set(false);
@@ -39,7 +40,7 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
                         legend { "Source" }
                         div { class: "radio-group",
                             for (value, label) in [("upload", "Upload file"), ("remote", "Remote URL")] {
-                                label { input { r#type: "radio", name: "kernel-source", checked: source() == value, onchange: move |_| source.set(value.into()) } "{label}" }
+                                label { input { r#type: "radio", name: "kernel-source", checked: source() == value, onchange: move |_| { source.set(value.into()); bytes.set(None); error.set(String::new()); } } "{label}" }
                             }
                         }
                     }
@@ -62,6 +63,7 @@ pub fn AddKernel(onclose: EventHandler<()>, onsaved: EventHandler<()>) -> Elemen
                         Field { label: "SHA-256", id: "kernel-sha", value: sha, required: true, disabled: busy() }
                     }
                     Field { label: "Filename in kernel directory", id: "kernel-name", value: name, required: true, disabled: busy() || reading(), placeholder: "vmlinux-6.1" }
+                    Field { label: "Alias", id: "kernel-add-alias", value: alias, required: true, disabled: busy() || reading(), placeholder: "linux-6.1" }
                     p { class: "small muted", "Existing files are never overwritten. Maximum size: 128 MiB." }
                 }
                 div { class: "actions end",
@@ -85,7 +87,7 @@ pub fn AliasEditor(kernel: Value, onclose: EventHandler<()>, onsaved: EventHandl
                 event.prevent_default(); if busy() { return; }
                 let path = format!("/v1/kernels/{}", encode(&text(&kernel, "name")));
                 let value = alias().trim().to_owned();
-                let body = json!({"alias":if value.is_empty() { None } else { Some(value) }});
+                let body = json!({"alias":value});
                 busy.set(true); error.set(String::new());
                 spawn(async move {
                     match request("PUT", &path, Some(body), &auth.csrf()).await { Ok(_) => onsaved.call(()), Err(message) => error.set(message) }
@@ -93,8 +95,8 @@ pub fn AliasEditor(kernel: Value, onclose: EventHandler<()>, onsaved: EventHandl
                 });
             },
                 Notice { message: error() }
-                Field { label: "Alias", id: "kernel-alias", value: alias, disabled: busy(), placeholder: "Recommended" }
-                p { class: "small muted", "A display name for this kernel. Leave empty to clear it. Existing VM selections stay unchanged." }
+                Field { label: "Alias", id: "kernel-alias", value: alias, required: true, disabled: busy(), placeholder: "Recommended" }
+                p { class: "small muted", "A unique display name for this kernel. Existing VM selections stay unchanged." }
                 div { class: "actions end",
                     button { r#type: "button", disabled: busy(), onclick: move |_| onclose.call(()), "Cancel" }
                     button { r#type: "submit", class: "primary", disabled: busy(), "Save alias" }

@@ -443,6 +443,9 @@ footer span:first-child {
 .heading.compact {
   margin-bottom:16px;
 }
+.heading.compact.vm-tab-heading {
+  margin-bottom:0;
+}
 .heading.compact h2 {
   margin-bottom:7px;
 }
@@ -645,7 +648,7 @@ tbody tr:hover {
   flex-wrap:wrap;
   margin:15px 0 22px;
 }
-.vm-detail .actions button {
+.vm-detail .actions button:not(.info-button) {
   padding:7px 10px;
   min-height:32px;
   font-size:11px;

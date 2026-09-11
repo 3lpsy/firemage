@@ -18,7 +18,11 @@ pub fn Secrets() -> Element {
     });
     rsx! {
         div { class: "heading",
-            div { h1 { "Secrets" } p { class: "muted", "Named credentials for your VMs and their upstream requests." } }
+            div {
+                div { class: "eyebrow", "ACCESS" }
+                h1 { "Secrets" }
+                p { class: "muted", "Named credentials for your VMs and their upstream requests." }
+            }
             button { class: "primary", onclick: move |_| editing.set(Some(String::new())), "+ Create secret" }
         }
         div { class: "policy-guide",

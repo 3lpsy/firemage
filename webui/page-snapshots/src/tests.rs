@@ -31,3 +31,20 @@ fn capture_and_restore_require_distinct_lifecycle_states() {
     vm["spec"]["security"]["mode"] = json!("trusted");
     assert!(!crate::model::is_restore_target(&vm, &snapshot));
 }
+
+#[test]
+fn vm_inventory_uses_source_id_and_keeps_uploaded_snapshots_unbound() {
+    let vm = json!({"id":"source-id", "spec":{"name":"renamed"}});
+    assert!(crate::model::is_source_vm(
+        &vm,
+        &json!({"source_vm_id":"source-id", "source_vm_name":"original"})
+    ));
+    assert!(!crate::model::is_source_vm(
+        &vm,
+        &json!({"source_vm_id":"other-id", "source_vm_name":"renamed"})
+    ));
+    assert!(!crate::model::is_source_vm(
+        &vm,
+        &json!({"source_vm_id":null, "source_vm_name":"renamed"})
+    ));
+}

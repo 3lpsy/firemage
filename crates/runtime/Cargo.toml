@@ -9,6 +9,7 @@ firemage-guest-bundle = { path = "../guest-bundle" }
 firemage-guest-protocol = { path = "../guest-protocol" }
 base64 = "0.22"
 hex.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 firemage-catalog-files = { path = "../catalog-files" }
 firemage-snapshots = { path = "../snapshots" }
 firemage-kernels = { path = "../kernels" }

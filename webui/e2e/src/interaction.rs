@@ -27,6 +27,15 @@ impl Harness {
             .await?;
         Ok(())
     }
+    pub async fn vm_details(&self, name: &str) -> Result<()> {
+        self.element(By::Css(format!(
+            "button[aria-label='Toggle {name} details']"
+        )))
+        .await?
+        .click()
+        .await?;
+        Ok(())
+    }
     pub async fn modal_button(&self, label: &str) -> Result<()> {
         self.element(By::XPath(format!(
             "//*[@role='dialog']//button[normalize-space(.)='{label}']"
@@ -136,6 +145,17 @@ impl Harness {
     pub async fn radio(&self, name: &str, label: &str) -> Result<()> {
         self.element(By::XPath(format!("//label[contains(normalize-space(.),'{label}')]/input[@type='radio' and @name='{name}']"))).await?.click().await?;
         Ok(())
+    }
+    pub async fn select_network(&self, name: &str) -> Result<()> {
+        let networks = self.api("/v1/networks").await?;
+        let id = networks
+            .as_array()
+            .context("network list")?
+            .iter()
+            .find(|network| network["name"] == name)
+            .and_then(|network| network["id"].as_str())
+            .context("network ID")?;
+        self.select_value("vm-network", id).await
     }
     pub async fn select_kernel(&self, name: &str) -> Result<()> {
         self.element(By::Id("vm-kernel")).await?.click().await?;

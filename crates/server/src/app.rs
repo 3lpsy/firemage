@@ -60,6 +60,10 @@ pub fn router(app: App) -> Router {
         )
         .route("/v1/assets/limits", get(crate::file_assets::limits))
         .route(
+            "/v1/assets/import",
+            axum::routing::post(crate::file_assets::import),
+        )
+        .route(
             "/v1/assets/{id}",
             axum::routing::put(crate::file_assets::alias).delete(crate::file_assets::delete),
         )

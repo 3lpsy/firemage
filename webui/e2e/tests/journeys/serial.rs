@@ -31,7 +31,7 @@ pub async fn serial(h: &Harness, vm_id: &str, screenshot: &str) -> Result<()> {
     h.button("Back to separate stream").await?;
     super::serial_connection::connection(h, vm_id, screenshot).await?;
     set_terminal(h, vm_id, false).await?;
-    h.button("Firecracker").await?;
+    h.button("Firecracker Logs").await?;
     h.text("host-api-diagnostic").await?;
     h.text("host-process-stderr").await?;
     h.absent(By::XPath("//pre[contains(text(),'guest-console-ready')]"))

@@ -6,7 +6,6 @@ use firemage_webui_component_controls::*;
 use firemage_webui_provider_api::{encode, get, request};
 use firemage_webui_provider_auth::use_auth;
 use firemage_wire::FileAsset;
-use std::rc::Rc;
 
 #[component]
 pub fn Assets() -> Element {
@@ -15,7 +14,7 @@ pub fn Assets() -> Element {
         serde_json::from_value::<Vec<FileAsset>>(get("/v1/assets").await?)
             .map_err(|error| format!("Could not read assets: {error}"))
     });
-    let mut upload_input = use_signal(|| None::<Rc<MountedData>>);
+    let mut adding = use_signal(|| false);
     let mut search = use_signal(String::new);
     let mut editing = use_signal(|| None::<FileAsset>);
     let mut deleting = use_signal(|| None::<FileAsset>);
@@ -23,13 +22,14 @@ pub fn Assets() -> Element {
     let mut busy = use_signal(|| false);
     rsx! {
         div { class: "heading",
-            h1 { "Assets" }
+            div {
+                div { class: "eyebrow", "STORAGE" }
+                h1 { "Assets" }
+            }
             div { class: "actions",
                 button { onclick: move |_| rows.restart(), "Refresh assets" }
                 if auth.is_admin() {
-                    button { class: "primary", onclick: move |_| {
-                        if let Some(input) = upload_input() { spawn(async move { let _ = input.set_focus(true).await; }); }
-                    }, "Upload asset" }
+                    button { class: "primary", onclick: move |_| adding.set(true), "+ Add asset" }
                 }
             }
         }
@@ -45,7 +45,7 @@ pub fn Assets() -> Element {
                 }).collect();
                 rsx! {
                     if filtered.is_empty() {
-                        Empty { title: if query.is_empty() { "No assets yet" } else { "No matching assets" }, description: if query.is_empty() { "Upload a file with an alias to attach it to your VMs." } else { "Try another alias or filename." } }
+                        Empty { title: if query.is_empty() { "No assets yet" } else { "No matching assets" }, description: if query.is_empty() { "Add a file with an alias to attach it to your VMs." } else { "Try another alias or filename." } }
                     } else {
                         table { class: "kernel-table",
                             thead { tr { th { "ALIAS" } th { "FILE" } th { "SIZE" } th { "VMs" } th { "ACTIONS" } } }
@@ -78,8 +78,8 @@ pub fn Assets() -> Element {
             Some(Err(message)) => rsx! { Notice { message: message.clone() } },
             None => rsx! { p { role: "status", "Loading assets…" } },
         }
-        if auth.is_admin() {
-            upload::UploadAsset { onmounted: move |input| upload_input.set(Some(input)), onsaved: move |_| rows.restart() }
+        if adding() && auth.is_admin() {
+            upload::AddAsset { onclose: move |_| adding.set(false), onsaved: move |_| { adding.set(false); rows.restart(); } }
         }
         if let Some(asset) = editing() {
             editor::AliasEditor { asset, onclose: move |_| editing.set(None), onsaved: move |_| { editing.set(None); rows.restart(); } }

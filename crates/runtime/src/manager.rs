@@ -48,6 +48,7 @@ impl Runtime {
         self.normalize_kernel(&mut spec)?;
         self.ensure_isolation_policy(&spec)?;
         let _network_guard = self.lock("networks").await;
+        self.normalize_network(owner, &mut spec).await?;
         self.validate_dependencies(owner, &spec).await?;
         if let Some(net) = &spec.network {
             self.ensure_network_address_available(owner, net, None)

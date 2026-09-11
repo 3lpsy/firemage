@@ -12,15 +12,12 @@ pub fn Restore(
 ) -> Element {
     let auth = use_auth();
     let fixed = vm.is_some();
-    let rows = use_resource(move || {
-        let vm = vm.clone();
-        async move {
-            match vm {
-                Some(vm) => Ok(vec![vm]),
-                None => crate::model::vms().await,
-            }
+    let rows = use_resource(use_reactive((&vm,), |(vm,)| async move {
+        match vm {
+            Some(vm) => Ok(vec![vm]),
+            None => crate::model::vms().await,
         }
-    });
+    }));
     let mut target_name = use_signal(String::new);
     let mut acknowledged = use_signal(|| false);
     let mut busy = use_signal(|| false);

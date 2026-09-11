@@ -27,7 +27,11 @@ pub fn Egress(vm: Value, onchanged: EventHandler<()>) -> Element {
         .as_ref()
         .and_then(|r| r.as_ref().ok())
         .and_then(|v| v.as_array())
-        .and_then(|rows| rows.iter().find(|r| text(r, "name") == network))
+        .and_then(|rows| {
+            rows.iter()
+                .find(|r| text(r, "id") == network)
+                .or_else(|| rows.iter().find(|r| text(r, "name") == network))
+        })
         .is_some_and(|r| r["policy"]["mode"] == "firemage-only");
     let restricted = status
         .read()
@@ -37,7 +41,7 @@ pub fn Egress(vm: Value, onchanged: EventHandler<()>) -> Element {
         .unwrap_or(inferred);
     let live = matches!(text(&vm, "state").as_str(), "running" | "paused");
     rsx! {
-        div { class: "heading compact", h3 { "Egress" }
+        div { class: "heading compact vm-tab-heading", h3 { "Egress" }
             button { onclick: move |_| refresh += 1, "Refresh egress" }
         }
         Notice { message: error() } Notice { message: success(), success: true }

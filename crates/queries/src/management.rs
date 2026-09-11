@@ -142,10 +142,16 @@ pub async fn update_vm_spec(
     spec: String,
 ) -> anyhow::Result<vms::Model> {
     let tx = db.begin().await?;
+    let state = if row.state == "stopped" {
+        "stopped"
+    } else {
+        "defined"
+    };
     let mut active = row.into_active_model();
     active.name = Set(name);
     active.spec = Set(spec);
-    active.state = Set("defined".into());
+    // Keep stopped provenance when a previous VMM left its socket node behind.
+    active.state = Set(state.into());
     active.error = Set(None);
     let row = active.update(&tx).await?;
     crate::egress_catalog::bind_vm_egress(&tx, &row).await?;
@@ -160,7 +166,19 @@ pub async fn update_network(
     row: networks::Model,
     spec: String,
 ) -> anyhow::Result<()> {
+    let parsed: firemage_wire::NetworkSpec = serde_json::from_str(&spec)?;
+    parsed.validate()?;
+    anyhow::ensure!(
+        networks::Entity::find()
+            .filter(networks::Column::Name.eq(&parsed.name))
+            .filter(networks::Column::Id.ne(&row.id))
+            .one(db)
+            .await?
+            .is_none(),
+        "network name already exists"
+    );
     let mut active = row.into_active_model();
+    active.name = Set(parsed.name);
     active.spec = Set(spec);
     active.update(db).await?;
     Ok(())

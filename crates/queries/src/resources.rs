@@ -98,6 +98,24 @@ pub async fn network(
     owner: &str,
     name: &str,
 ) -> anyhow::Result<networks::Model> {
+    firemage_wire::ensure_asset_id(owner)?;
+    firemage_wire::ensure_name(name)?;
+    if let Some(row) = networks::Entity::find_by_id(name)
+        .filter(networks::Column::OwnerId.eq(owner))
+        .one(db)
+        .await?
+    {
+        return Ok(row);
+    }
+    network_by_name(db, owner, name).await
+}
+pub async fn network_by_name(
+    db: &DatabaseConnection,
+    owner: &str,
+    name: &str,
+) -> anyhow::Result<networks::Model> {
+    firemage_wire::ensure_asset_id(owner)?;
+    firemage_wire::ensure_name(name)?;
     networks::Entity::find()
         .filter(networks::Column::OwnerId.eq(owner))
         .filter(networks::Column::Name.eq(name))
@@ -110,9 +128,10 @@ pub async fn delete_network(
     owner: &str,
     name: &str,
 ) -> anyhow::Result<()> {
+    let row = network(db, owner, name).await?;
     networks::Entity::delete_many()
         .filter(networks::Column::OwnerId.eq(owner))
-        .filter(networks::Column::Name.eq(name))
+        .filter(networks::Column::Id.eq(row.id))
         .exec(db)
         .await?;
     Ok(())

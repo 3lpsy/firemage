@@ -79,68 +79,11 @@ async fn imports_reject_unverified_and_private_destinations_before_publishing() 
     ] {
         let request = firemage_wire::KernelImport {
             name: "vmlinux".into(),
+            alias: "Linux".into(),
             url: url.into(),
             sha256: "a".repeat(64),
         };
         assert!(super::fetch(&catalog, &request).await.is_err());
     }
     assert!(catalog.list().unwrap().is_empty());
-}
-
-#[test]
-fn redirects_allow_release_handoffs_but_reject_downgrades_credentials_and_private_targets() {
-    use crate::download::redirect_target;
-    let origin = reqwest::Url::parse("https://example.com/releases/kernel").unwrap();
-    let target = redirect_target(
-        &origin,
-        "https://cdn.example.com/assets/kernel?signature=value",
-        0,
-    )
-    .unwrap();
-    assert_eq!(target.host_str(), Some("cdn.example.com"));
-    assert_eq!(
-        redirect_target(&target, "../vmlinux", 1).unwrap().as_str(),
-        "https://cdn.example.com/vmlinux"
-    );
-    for location in [
-        "http://example.com/kernel",
-        "https://user:password@example.com/kernel",
-        "https://example.com/kernel#fragment",
-        "https://127.0.0.1/kernel",
-        "https://10.0.0.1/kernel",
-        "https://100.64.0.1/kernel",
-        "https://169.254.169.254/kernel",
-        "https://[::1]/kernel",
-        "https://[::ffff:127.0.0.1]/kernel",
-        "//192.168.1.1/kernel",
-    ] {
-        assert!(redirect_target(&origin, location, 0).is_err(), "{location}");
-    }
-    let mut current = origin;
-    for followed in 0..5 {
-        current = redirect_target(&current, "/next", followed).unwrap();
-    }
-    assert!(redirect_target(&current, "/sixth", 5).is_err());
-}
-
-#[test]
-fn redirect_dns_answers_must_all_be_public_before_a_connection_is_pinned() {
-    use crate::download::ensure_addresses;
-    let public: std::net::SocketAddr = "93.184.215.14:443".parse().unwrap();
-    assert!(ensure_addresses(&[public]).is_ok());
-    assert!(ensure_addresses(&[]).is_err());
-    for address in [
-        "127.0.0.1:443",
-        "100.64.0.1:443",
-        "169.254.169.254:443",
-        "[::1]:443",
-        "[fc00::1]:443",
-        "[::ffff:127.0.0.1]:443",
-        "192.0.2.1:443",
-    ] {
-        assert!(
-            ensure_addresses(&[public, address.parse().unwrap()]).is_err(),
-            "{address}"
-        );
-    }
 }

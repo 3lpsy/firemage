@@ -13,6 +13,7 @@ pub struct Kernel {
 #[serde(deny_unknown_fields)]
 pub struct KernelImport {
     pub name: String,
+    pub alias: String,
     pub url: String,
     pub sha256: String,
 }
@@ -35,15 +36,17 @@ pub fn ensure_kernel_name(name: &str) -> anyhow::Result<()> {
 }
 impl KernelAlias {
     pub fn validate(&self) -> anyhow::Result<()> {
-        if let Some(alias) = &self.alias {
-            anyhow::ensure!(
-                !alias.trim().is_empty()
-                    && alias.len() <= 128
-                    && alias.trim() == alias
-                    && !alias.chars().any(char::is_control),
-                "alias must contain 1-128 characters without surrounding whitespace or control characters"
-            );
-        }
+        let alias = self
+            .alias
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("kernel alias is required"))?;
+        anyhow::ensure!(
+            !alias.trim().is_empty()
+                && alias.len() <= 128
+                && alias.trim() == alias
+                && !alias.chars().any(char::is_control),
+            "alias must contain 1-128 characters without surrounding whitespace or control characters"
+        );
         Ok(())
     }
 }

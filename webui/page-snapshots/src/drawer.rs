@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use firemage_webui_component_controls::{Confirm, Notice};
+use firemage_webui_component_controls::{Confirm, Icon, Notice};
 use firemage_webui_provider_api::{encode, request, text, timestamp};
 use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
@@ -15,7 +15,9 @@ pub fn Drawer(snapshot: Value, onclose: EventHandler<()>, onchanged: EventHandle
     let delete_id = id.clone();
     rsx! {
         aside { class: "snapshot-drawer", "aria-label": "Snapshot details",
-            div { class: "heading compact", h2 { r#"{alias}"# } button { class: "quiet", onclick: move |_| onclose.call(()), "Close" } }
+            div { class: "heading compact", h2 { r#"{alias}"# }
+                button { class: "icon-button", title: "Close snapshot details", "aria-label": "Close snapshot details", onclick: move |_| onclose.call(()), Icon { name: "close", size: 18 } }
+            }
             dl { class: "snapshot-facts",
                 dt { "Source VM" } dd { r#"{text(&snapshot, "source_vm_name")}"# }
                 dt { "Saved" } dd { r#"{timestamp(&snapshot["created_at"])}"# }

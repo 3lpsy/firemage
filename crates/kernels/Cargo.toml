@@ -8,11 +8,7 @@ license.workspace = true
 firemage-catalog-files = { path = "../catalog-files" }
 anyhow.workspace = true
 firemage-wire = { path = "../wire" }
-libc.workspace = true
-reqwest.workspace = true
-sha2.workspace = true
-hex.workspace = true
 tempfile.workspace = true
-tokio.workspace = true
 
 [dev-dependencies]
+tokio.workspace = true

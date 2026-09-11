@@ -10,6 +10,9 @@ impl Catalog {
             KERNEL_MAX_BYTES,
         )?))
     }
+    pub(crate) fn directory(&self) -> &firemage_catalog_files::Directory {
+        &self.0
+    }
     pub fn file(&self, name: &str) -> anyhow::Result<File> {
         self.0.file(name)
     }

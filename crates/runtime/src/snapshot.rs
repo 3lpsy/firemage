@@ -8,13 +8,15 @@ use tokio::io::AsyncReadExt;
 
 impl Runtime {
     async fn snapshot_network(&self, owner: &str, spec: &VmSpec) -> anyhow::Result<Value> {
-        let definition = if let Some(attachment) = &spec.network {
+        let mut attachment = spec.network.clone();
+        let definition = if let Some(attachment) = &mut attachment {
             let row = firemage_queries::network(&self.db, owner, &attachment.network).await?;
+            attachment.network = row.id;
             serde_json::from_str::<Value>(&row.spec)?
         } else {
             Value::Null
         };
-        Ok(json!({"attachment": spec.network, "definition": definition}))
+        Ok(json!({"attachment": attachment, "definition": definition}))
     }
     pub(crate) async fn record_snapshot(
         &self,
@@ -44,11 +46,13 @@ impl Runtime {
         {
             return Ok(());
         }
-        let expected = self.snapshot_record(row, state, memory).await?;
+        let mut expected = self.snapshot_record(row, state, memory).await?;
         let path = self.snapshot_record_path(&row.id, &expected)?;
-        let saved: Value = serde_json::from_slice(&tokio::fs::read(path).await.context(
+        let mut saved: Value = serde_json::from_slice(&tokio::fs::read(path).await.context(
             "Firemage-only restore requires a snapshot created by this VM through Firemage",
         )?)?;
+        self.normalize_snapshot_network(&row.owner_id, &mut saved, &mut expected)
+            .await?;
         anyhow::ensure!(
             saved == expected,
             "snapshot provenance or network configuration changed; restore requires this VM's unchanged managed snapshot"
@@ -68,7 +72,7 @@ impl Runtime {
             "snapshot memory must be a regular file"
         );
         let spec: VmSpec = serde_json::from_str(&row.spec)?;
-        let mut record = json!({"vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?, "security": spec.security});
+        let mut record = json!({"version": 2, "vm_id": row.id, "state": state, "memory": memory, "state_sha256": state_hash(&state).await?, "network": self.snapshot_network(&row.owner_id, &spec).await?, "security": spec.security});
         if let Some(terminal) = spec.web_terminal {
             record["web_terminal"] = serde_json::to_value(terminal)?;
         }
@@ -84,6 +88,58 @@ impl Runtime {
             .join(format!("{:x}.json", Sha256::digest(state.as_bytes()))))
     }
 }
+impl Runtime {
+    async fn normalize_snapshot_network(
+        &self,
+        owner: &str,
+        saved: &mut Value,
+        expected: &mut Value,
+    ) -> anyhow::Result<()> {
+        if saved.get("version").is_none() {
+            expected
+                .as_object_mut()
+                .context("invalid expected snapshot record")?
+                .remove("version");
+            if let Some(attachment) = saved
+                .get("network")
+                .and_then(|network| network.get("attachment"))
+                && !attachment.is_null()
+            {
+                let name = attachment
+                    .get("network")
+                    .and_then(Value::as_str)
+                    .context("invalid legacy snapshot network reference")?;
+                anyhow::ensure!(
+                    saved["network"]["definition"]["name"].as_str() == Some(name),
+                    "legacy snapshot network name differs from its definition"
+                );
+                let network = firemage_queries::network_by_name(&self.db, owner, name).await
+                    .context("legacy private snapshot network was renamed or removed; restore requires its original network name")?;
+                anyhow::ensure!(
+                    expected["network"]["attachment"]["network"] == network.id,
+                    "legacy snapshot belongs to another network"
+                );
+                saved
+                    .get_mut("network")
+                    .and_then(|network| network.get_mut("attachment"))
+                    .and_then(Value::as_object_mut)
+                    .context("invalid legacy snapshot attachment")?
+                    .insert("network".into(), Value::String(network.id));
+            }
+        }
+        for record in [saved, expected] {
+            if let Some(definition) = record
+                .get_mut("network")
+                .and_then(|network| network.get_mut("definition"))
+                .and_then(Value::as_object_mut)
+            {
+                definition.remove("name");
+            }
+        }
+        Ok(())
+    }
+}
+
 async fn state_hash(path: &Path) -> anyhow::Result<String> {
     let mut file = tokio::fs::File::open(path).await?;
     let metadata = file.metadata().await?;

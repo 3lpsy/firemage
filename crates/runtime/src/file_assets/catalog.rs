@@ -77,6 +77,7 @@ impl Runtime {
             owner_id: owner.into(),
             alias: input.alias,
             filename: input.filename,
+            storage_name: None,
             size_bytes,
             sha256,
             created_at: firemage_queries::now(),
@@ -87,7 +88,7 @@ impl Runtime {
         }
         self.file_asset(owner, &id).await
     }
-    async fn ensure_asset_alias_available(
+    pub(super) async fn ensure_asset_alias_available(
         &self,
         owner: &str,
         alias: &str,
@@ -125,14 +126,15 @@ impl Runtime {
             row.vm_count
         );
         // A reduced upload limit must not prevent deleting an older, larger file.
+        let stored = firemage_queries::file_asset(&self.db, owner, id).await?;
         firemage_catalog_files::Directory::open(&self.config.asset_dir(), 0, u64::MAX)?
-            .remove(id)?;
+            .remove(stored.storage_name.as_deref().unwrap_or(id))?;
         firemage_queries::delete_file_asset(&self.db, owner, id).await
     }
     pub async fn file_asset_content(&self, owner: &str, id: &str) -> anyhow::Result<Vec<u8>> {
         let row = firemage_queries::file_asset(&self.db, owner, id).await?;
         let catalog = self.file_catalog()?;
-        let file = catalog.file(id)?;
+        let file = catalog.file(row.storage_name.as_deref().unwrap_or(id))?;
         let maximum = self.config.asset_max_bytes();
         tokio::task::spawn_blocking(move || {
             let mut bytes = Vec::new();

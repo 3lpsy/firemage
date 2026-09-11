@@ -7,6 +7,7 @@ pub struct Model {
     pub owner_id: String,
     pub alias: String,
     pub filename: String,
+    pub storage_name: Option<String>,
     pub size_bytes: i64,
     pub sha256: String,
     pub created_at: i64,

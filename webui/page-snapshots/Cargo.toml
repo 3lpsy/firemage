@@ -11,5 +11,6 @@ firemage-wire = { path = "../../crates/wire" }
 firemage-webui-provider-api = { path = "../provider-api" }
 firemage-webui-provider-auth = { path = "../provider-auth" }
 firemage-webui-component-controls = { path = "../component-controls" }
+firemage-webui-routes = { path = "../routes" }
 wasm-bindgen.workspace = true
 web-sys = { version = "0.3", features = ["Window", "Document", "HtmlInputElement", "FileList", "File", "Blob"] }

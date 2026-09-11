@@ -17,6 +17,11 @@ pub async fn vms() -> Result<Vec<Value>, String> {
 pub fn is_capture_target(vm: &Value) -> bool {
     text(vm, "state") == "paused" && is_managed_jailed(vm)
 }
+pub fn is_source_vm(vm: &Value, snapshot: &Value) -> bool {
+    snapshot["source_vm_id"]
+        .as_str()
+        .is_some_and(|id| !id.is_empty() && vm["id"].as_str() == Some(id))
+}
 pub fn snapshot_choice(snapshot: &Value) -> String {
     format!("{} ({})", text(snapshot, "alias"), text(snapshot, "id"))
 }

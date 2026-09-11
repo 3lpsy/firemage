@@ -11,6 +11,12 @@ pub struct NetworkSpec {
     #[serde(default)]
     pub policy: NetworkPolicy,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Network {
+    pub id: String,
+    #[serde(flatten)]
+    pub spec: NetworkSpec,
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NetworkPolicy {

@@ -79,6 +79,46 @@ async fn assets_http_enforces_owner_permissions_upload_limits_and_reference_prot
     let admin = Some(tokens[0].as_str());
     let other = Some(tokens[1].as_str());
     let reader = Some(tokens[2].as_str());
+    let remote =
+        json!({"alias":"remote", "filename":"config.json", "url":"https://127.0.0.1/config.json"});
+    for (token, expected) in [
+        (None, StatusCode::UNAUTHORIZED),
+        (reader, StatusCode::FORBIDDEN),
+        (admin, StatusCode::BAD_REQUEST),
+    ] {
+        let (status, response) = request(
+            &router,
+            "POST",
+            "/v1/assets/import",
+            token,
+            remote.to_string().into_bytes(),
+        )
+        .await;
+        assert_eq!(status, expected, "{response}");
+    }
+    for invalid in [
+        json!({"filename":"config.json", "url":"https://example.com/config.json"}),
+        json!({"alias":"remote", "filename":"../escape", "url":"https://example.com/config.json"}),
+        json!({"alias":"remote", "filename":"config.json", "url":"file:///etc/passwd"}),
+        json!({"alias":"remote", "filename":"config.json", "url":"https://example.com/config.json", "sha256":"invalid"}),
+    ] {
+        let (status, _) = request(
+            &router,
+            "POST",
+            "/v1/assets/import",
+            admin,
+            invalid.to_string().into_bytes(),
+        )
+        .await;
+        assert!(
+            status.is_client_error(),
+            "invalid remote asset was accepted"
+        );
+    }
+    assert_eq!(
+        request(&router, "GET", "/v1/assets", admin, vec![]).await.1,
+        json!([])
+    );
     assert_eq!(
         request(&router, "GET", "/v1/assets/limits", None, vec![])
             .await

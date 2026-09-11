@@ -13,7 +13,8 @@ impl Runtime {
         for attachment in &spec.attachments {
             attachment.validate()?;
             let row = firemage_queries::file_asset(&self.db, owner, &attachment.asset_id).await?;
-            self.file_catalog()?.file(&row.id)?;
+            self.file_catalog()?
+                .file(row.storage_name.as_deref().unwrap_or(&row.id))?;
             total = total
                 .checked_add(row.size_bytes as u64)
                 .ok_or_else(|| anyhow::anyhow!("combined guest boot inputs are too large"))?;

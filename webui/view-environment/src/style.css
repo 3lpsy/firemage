@@ -1,0 +1,13 @@
+.environment-table code{white-space:pre-wrap;overflow-wrap:anywhere}.environment-table th:last-child,.environment-table td:last-child:has(.actions){width:1%;white-space:nowrap}.environment-variable-fields{border:0;padding:0;margin:0;min-width:0}
+
+.environment-variable-editor .environment-variable-row{border:0;border-bottom:1px solid var(--line);border-radius:0;min-width:0;margin:0 0 14px;padding:0 0 14px}
+.environment-variable-editor .environment-variable-row>legend{padding:0;margin-bottom:8px;font-size:11px;color:var(--muted)}
+.environment-variable-grid{display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,1.65fr) auto;align-items:end;gap:12px}
+.environment-variable-editor .field{margin:0;gap:6px;min-width:0}
+.environment-variable-editor .value-source{margin:0;padding:0;border:0;min-width:0}
+.environment-variable-editor .value-source>legend{font-size:11px;padding:0;margin-bottom:6px}
+.environment-variable-editor .radio-group{margin:0 0 10px;gap:10px;flex-wrap:wrap}
+.environment-variable-editor .radio-group label{font-size:11px}
+.environment-variable-editor .environment-variable-remove{margin:0;padding:8px;font-size:11px}
+.environment-variable-editor>.actions.end{padding-top:12px;margin-top:4px}
+@media(max-width:600px){.environment-variable-grid{grid-template-columns:minmax(0,1fr)}.environment-variable-editor .environment-variable-remove{justify-self:end}.environment-variable-editor .environment-variable-row{margin-bottom:12px;padding-bottom:12px}}

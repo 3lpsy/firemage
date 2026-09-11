@@ -56,7 +56,7 @@ impl Runtime {
             }
         };
         Ok(NetworkAttachment {
-            network: name.into(),
+            network: row.id,
             address,
             mac,
         })

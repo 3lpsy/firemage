@@ -80,6 +80,38 @@ pub async fn transfer(h: &Harness) -> Result<()> {
         h.api(&format!("/v1/vms/{original_id}")).await?["spec"] == original["spec"],
         "transfer changed the source VM"
     );
+    // Hash-only navigation must discard the previous VM resource and unsaved editor draft.
+    for vm in [&duplicate, &original] {
+        let id = vm["id"].as_str().context("VM ID")?;
+        h.driver
+            .execute(
+                "window.location.hash = arguments[0]",
+                vec![json!(format!("vms/{id}"))],
+            )
+            .await?;
+        let name = vm["spec"]["name"].as_str().context("VM name")?;
+        h.element(By::XPath(format!("//*[@class='vm-full-page' or contains(@class,'vm-full-page')]//h2[normalize-space(.)='{name}']"))).await?;
+    }
+    for vm in [&original, &duplicate] {
+        let id = vm["id"].as_str().context("VM ID")?;
+        h.driver
+            .execute(
+                "window.location.hash = arguments[0]",
+                vec![json!(format!("vms/{id}/edit"))],
+            )
+            .await?;
+        let expected = vm["spec"]["name"].as_str().context("VM name")?;
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        while h.value("vm-name").await? != expected {
+            anyhow::ensure!(
+                tokio::time::Instant::now() < deadline,
+                "VM editor retained the previous VM draft"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+        h.fill("vm-name", "discard-this-draft").await?;
+    }
+    h.button("Cancel").await?;
     Ok(())
 }
 

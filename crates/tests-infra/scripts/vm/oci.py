@@ -149,6 +149,16 @@ printf 'native-private-oci-ok\\n' > /firemage/output/result
         assert server.challenges > 0 and server.authorized == set(server.files), "native pull did not authenticate every registry asset"
         assert not list((harness.data / "vms" / vm).glob(".firemage-oci-*")), "OCI extraction staging leaked"
         assert password not in harness.console(vm), "registry credentials leaked into guest logs"
+        edited = dict(returned["spec"], environment={"UPDATED_ENV": "after-stop"},
+                      userdata=userdata + '[ "$UPDATED_ENV" = after-stop ]\n')
+        assert harness.request("PUT", f"/v1/vms/{vm}", edited)["state"] == "stopped"
+        assert harness.action(vm, "refresh")["state"] == "stopped"
+        assert harness.action(vm, "prepare")["state"] == "ready"
+        assert harness.action(vm, "start")["state"] == "running"
+        harness.state(vm, "stopped")
+        assert harness.output(vm, "exit-code") == b"0\n", harness.console(vm)
+        assert harness.output(vm, "result") == b"native-private-oci-ok\n"
+        print("PASS stopped environment edit: preserves stopped state, prepare regenerates seed, next boot reads updated environment", flush=True)
         rootfs = returned["spec"]["rootfs"]
         verify_web_shell(harness, rootfs)
         no_command_manifest, no_command_config = commandless_fixture(directory, manifest, config)

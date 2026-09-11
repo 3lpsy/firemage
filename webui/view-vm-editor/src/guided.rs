@@ -12,6 +12,21 @@ pub fn Guided(
     owner: String,
     onconfigure: EventHandler<String>,
 ) -> Element {
+    let networks =
+        use_resource(|| async { firemage_webui_provider_api::get("/v1/networks").await });
+    let network_name = networks
+        .read()
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .and_then(|value| value.as_array())
+        .and_then(|rows| {
+            rows.iter()
+                .find(|row| row["id"] == (fields.network)())
+                .or_else(|| rows.iter().find(|row| row["name"] == (fields.network)()))
+        })
+        .and_then(|row| row["name"].as_str())
+        .unwrap_or("Selected network")
+        .to_owned();
     let mut terminal = fields.terminal;
     let attachments = fields.attachments;
     let count = |key: &str| base.read()[key].as_array().map_or(0, Vec::len);
@@ -36,7 +51,7 @@ pub fn Guided(
                 Section { id: "workload", title: "Workload", summary: if (fields.source)() == "oci" { (fields.workload_mode)() } else { "Guest managed".into() },
                     crate::workload::Workload { fields }
                 }
-                Section { id: "network", title: "Network", summary: if (fields.network)().is_empty() { "No network".into() } else { format!("{} · {}", (fields.network)(), (fields.address)()) },
+                Section { id: "network", title: "Network", summary: if (fields.network)().is_empty() { "No network".into() } else { format!("{} · {}", network_name, (fields.address)()) },
                     crate::network::NetworkFields { fields, vm_id }
                 }
                 Section { id: "egress", title: "Egress", summary: egress_summary,

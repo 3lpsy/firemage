@@ -32,7 +32,7 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         .await?;
     super::guest_files::install(h, vm["id"].as_str().context("VM ID")?).await?;
     h.navigate("Virtual machines").await?;
-    h.button("snapshot-target").await?;
+    h.vm_details("snapshot-target").await?;
     h.button("Files").await?;
     h.text("Stop the VM to browse and download files from its root disk.")
         .await?;
@@ -173,6 +173,13 @@ pub async fn snapshots(h: &Harness) -> Result<()> {
         "downloaded snapshot differs from uploaded bundle"
     );
     super::snapshot_targets::restore(h, target_id, id).await?;
+    super::snapshot_targets::inventory(
+        h,
+        target_id,
+        targets[0]["id"].as_str().context("other VM ID")?,
+        id,
+    )
+    .await?;
     h.fill("snapshot-search", "nothing-matches").await?;
     h.absent(By::Css(".snapshot-table tbody tr")).await?;
     h.fill("snapshot-search", "original-vm").await?;

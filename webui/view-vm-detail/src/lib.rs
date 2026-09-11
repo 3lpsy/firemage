@@ -1,4 +1,5 @@
 //! Selected VM lifecycle controls and operational views.
+mod actions_help;
 mod advanced;
 mod attachments;
 mod duplicate;
@@ -19,6 +20,25 @@ pub fn VmDetail(
     let auth = use_auth();
     let networks =
         use_resource(|| async { firemage_webui_provider_api::get("/v1/networks").await });
+    let network_id = text(&vm["spec"]["network"], "network");
+    let network_name = networks
+        .read()
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .and_then(|value| value.as_array())
+        .and_then(|rows| {
+            rows.iter()
+                .find(|row| row["id"] == network_id)
+                .or_else(|| rows.iter().find(|row| row["name"] == network_id))
+        })
+        .map(|row| text(row, "name"))
+        .unwrap_or_else(|| {
+            if network_id.is_empty() {
+                "No network".into()
+            } else {
+                "Network unavailable".into()
+            }
+        });
     let id = text(&vm, "id");
     let state = text(&vm, "state");
     let mut tab = use_signal(|| "Overview".to_owned());
@@ -91,7 +111,7 @@ pub fn VmDetail(
                 div { class: "vm-page-summary",
                     span { strong { r#"{vm["spec"]["vcpus"]}"# } " vCPUs" }
                     span { strong { r#"{vm["spec"]["memory_mib"]} MiB"# } " memory" }
-                    span { r#"{vm["spec"]["network"]["network"].as_str().unwrap_or("No network")}"# }
+                    span { "{network_name}" }
                     if let Some(address) = vm["spec"]["network"]["address"].as_str() { span { "{address}" } }
                     span { r#"{vm["spec"]["security"]["mode"].as_str().unwrap_or("jailed")}"# }
                 }
@@ -125,17 +145,20 @@ pub fn VmDetail(
                         }
                     }
                     button { disabled: busy() || vm["spec"]["socket"].is_string(), onclick: move |_| duplicating.set(true), "Duplicate VM" }
-                    button {
-                        class: "danger subtle",
-                        disabled: busy() || !matches!(state.as_str(), "defined" | "stopped" | "failed"),
-                        title: "Stop the VM before deleting its managed disks and files",
-                        onclick: move |_| { delete_snapshots.set(false); confirm.set("delete".into()); },
-                        "Delete VM"
+                    div { class: "actions",
+                        button {
+                            class: "danger subtle",
+                            disabled: busy() || !matches!(state.as_str(), "defined" | "stopped" | "failed"),
+                            title: "Stop the VM before deleting its managed disks and files",
+                            onclick: move |_| { delete_snapshots.set(false); confirm.set("delete".into()); },
+                            "Delete VM"
+                        }
+                        actions_help::ActionsHelp {}
                     }
                 }
             }
             div { class: "tabs scroll",
-                for label in ["Overview", "Configuration", "Security", "Egress", "Environment", "Attachments", "Boot", "Serial", "Web Shell", "Firecracker", "Files", "Snapshots", "Metadata", "Advanced"] {
+                for label in ["Overview", "Configuration", "Security", "Egress", "Environment", "Attachments", "Boot", "Serial", "Web Shell", "Files", "Snapshots", "Metadata", "Firecracker Logs", "Advanced"] {
                     button {
                         class: if tab() == label { "active" } else { "" },
                         onclick: move | _
@@ -154,7 +177,7 @@ pub fn VmDetail(
                         dt { "Root disk" }
                         dd { r#"{vm["spec"]["rootfs"]["kind"].as_str().unwrap_or("External")}"# }
                         dt { "Network" }
-                        dd { r#"{vm["spec"]["network"]["network"].as_str().unwrap_or("No network")}"# }
+                        dd { "{network_name}" }
                         dt { "Guest address" }
                         dd { r#"{vm["spec"]["network"]["address"].as_str().unwrap_or("None")}"# }
                         dt { "Boot files" }
@@ -195,7 +218,7 @@ pub fn VmDetail(
                     firemage_webui_view_serial::Serial { vm: vm.clone() }
                 },
                 "Web Shell" => rsx! { firemage_webui_view_web_shell::WebShell { vm: vm.clone(), onchanged } },
-                "Firecracker" => rsx! { firemage_webui_view_serial::FirecrackerLogs { id: id.clone() } },
+                "Firecracker Logs" => rsx! { firemage_webui_view_serial::FirecrackerLogs { id: id.clone() } },
                 "Files" => rsx! {
                     firemage_webui_view_guest_files::GuestFiles { vm: vm.clone() }
                 },

@@ -13,10 +13,10 @@ pub fn Vms() -> Element {
         return rsx! { page::CreateVmPage {} };
     }
     if let Some(id) = target.strip_suffix("/edit") {
-        return rsx! { page::EditVmPage { key: "{id}", id: id.to_owned() } };
+        return rsx! { for id in [id] { page::EditVmPage { key: "{id}", id: id.to_owned() } } };
     }
     if !target.is_empty() {
-        return rsx! { page::VmPage { key: "{target}", id: target } };
+        return rsx! { for id in [target] { page::VmPage { key: "{id}", id: id.clone() } } };
     }
     rsx! { Inventory {} }
 }
@@ -148,20 +148,13 @@ fn Inventory() -> Element {
                                     class: if vm["id"] == selected() { "vm-row selected" } else { "vm-row" },
                                     onclick: {
                                         let id = text(vm, "id");
-                                        move |_| selected.set(id.clone())
+                                        move |_| selected.set(if selected() == id { String::new() } else { id.clone() })
                                     },
                                     td {
-                                        button {
+                                        a {
                                             class: "table-link",
-                                            "aria-expanded": (vm["id"] == selected()).to_string(),
-                                            "aria-controls": chosen.as_ref().map(|_| "vm-detail"),
-                                            onclick: {
-                                                let id = text(vm, "id");
-                                                move |event| {
-                                                    event.stop_propagation();
-                                                    selected.set(id.clone());
-                                                }
-                                            },
+                                            href: format!("#vms/{}", text(vm, "id")),
+                                            onclick: move |event| event.stop_propagation(),
                                             r#"{vm["spec"]["name"].as_str().unwrap_or_default()}"#
                                         }
                                         small {
@@ -178,7 +171,16 @@ fn Inventory() -> Element {
                                         a { class: "icon-button vm-open-page", href: format!("#vms/{}", text(vm, "id")), title: "Open full page", "aria-label": format!("Open {} full page", text(&vm["spec"], "name")), onclick: move |event| event.stop_propagation(),
                                             Icon { name: "external", size: 16 }
                                         }
-                                        Icon { name: "chevron-right", size: 16 }
+                                        button { class: "icon-button", r#type: "button",
+                                            "aria-label": format!("Toggle {} details", text(&vm["spec"], "name")),
+                                            "aria-expanded": (vm["id"] == selected()).to_string(),
+                                            "aria-controls": chosen.as_ref().map(|_| "vm-detail"),
+                                            onclick: { let id = text(vm, "id"); move |event| {
+                                                event.stop_propagation();
+                                                selected.set(if selected() == id { String::new() } else { id.clone() });
+                                            } },
+                                            Icon { name: "chevron-right", size: 16 }
+                                        }
                                     }
                                 }
                             }
@@ -186,7 +188,7 @@ fn Inventory() -> Element {
                     }
                 }
             }
-            if let Some(vm) = chosen.clone() {
+            for vm in chosen.clone() {
                 VmDetail {
                     key: r#"{vm["id"].as_str().unwrap_or_default()}"#,
                     vm,

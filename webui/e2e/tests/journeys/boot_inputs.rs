@@ -4,20 +4,7 @@ use std::io::Write;
 use thirtyfour::prelude::*;
 
 pub async fn boot_inputs(h: &Harness) -> Result<()> {
-    h.button("Environment").await?;
-    h.button("Configure environment").await?;
-    h.button("+ Add variable").await?;
-    h.fill("environment-0-name", "REGION").await?;
-    h.fill("environment-0-literal", "test-region").await?;
-    h.button("+ Add variable").await?;
-    h.fill("environment-1-name", "SERVICE_TOKEN").await?;
-    h.radio("environment-1-mode", "Sensitive secret").await?;
-    h.select_value("environment-1-secret", "cloud-token")
-        .await?;
-    h.screenshot("environment-editor").await?;
-    h.modal_button("Save environment").await?;
-    h.absent(By::Css("[role='dialog']")).await?;
-    h.text("Secret: cloud-token").await?;
+    super::environment::variables(h).await?;
     h.button("Boot").await?;
     h.button("Configure boot inputs").await?;
     h.button("+ Add boot file").await?;

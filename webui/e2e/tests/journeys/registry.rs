@@ -49,7 +49,7 @@ pub async fn registry(h: &Harness) -> Result<()> {
         "registry configuration lost references, retained inactive auth, or exposed a secret"
     );
     h.navigate("Virtual machines").await?;
-    h.button("private-image").await?;
+    h.vm_details("private-image").await?;
     h.button("Configure VM").await?;
     h.button("Full TOML").await?;
     let mut spec: toml::Value = toml::from_str(&h.value("vm-toml").await?)?;

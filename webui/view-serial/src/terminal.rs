@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use firemage_webui_component_controls::{CopyButton, CopySource, Info};
+use firemage_webui_component_controls::{CopyButton, CopySource, Icon, Info};
 use firemage_webui_provider_auth::use_auth;
 use wasm_bindgen::prelude::*;
 
@@ -45,11 +45,17 @@ fn TerminalSession(id: String, tabs: Element, csrf: String) -> Element {
             {tabs}
             div { class: "serial-actions",
                 span { id: status, class: "serial-connection", role: "status", "Connecting…" }
-                button { id: action, r#type: "button", "Disconnect" }
                 Info { title: "TTY Stream", "Displays guest ttyS0 output and sends keyboard input to its console program. The guest must already provide a shell or getty. Opening this tab connects automatically." }
             }
         }
-        div { class: "actions end", CopyButton { source: CopySource::Terminal(container.clone()), label: "Copy TTY stream" } }
+        div { class: "actions end",
+            CopyButton { source: CopySource::Terminal(container.clone()), label: "Copy TTY stream" }
+            button { id: action, class: "icon-button", r#type: "button",
+                title: "Disconnect TTY stream", "aria-label": "Disconnect TTY stream",
+                span { "data-connection-icon": "connect", hidden: true, Icon { name: "plug" } }
+                span { "data-connection-icon": "disconnect", Icon { name: "unplug" } }
+            }
+        }
         div { id: container, class: "guest-terminal", onmounted: move |_| {
             *handle.borrow_mut() = Some(mount_terminal(&mount_container, &mount_status, &mount_action, &id, &csrf));
         } }

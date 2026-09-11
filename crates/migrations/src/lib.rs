@@ -13,6 +13,8 @@ mod m010_snapshots;
 mod m011_upstream_proxies;
 mod m012_egress_policies;
 mod m013_vm_egress_policies;
+mod m014_file_asset_storage;
+mod m015_network_references;
 pub struct Migrator;
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
@@ -31,6 +33,8 @@ impl MigratorTrait for Migrator {
             Box::new(m011_upstream_proxies::Migration),
             Box::new(m012_egress_policies::Migration),
             Box::new(m013_vm_egress_policies::Migration),
+            Box::new(m014_file_asset_storage::Migration),
+            Box::new(m015_network_references::Migration),
         ]
     }
 }

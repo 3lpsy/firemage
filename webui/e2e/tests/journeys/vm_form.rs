@@ -41,10 +41,7 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
     )
     .await?;
     h.button("Network").await?;
-    SelectElement::new(&h.element(By::Id("vm-network")).await?)
-        .await?
-        .select_by_value("form-net")
-        .await?;
+    h.select_network("form-net").await?;
     for _ in 0..50 {
         if h.value("vm-address").await? == "10.77.0.2" {
             break;
@@ -182,10 +179,45 @@ pub async fn vm_form(h: &Harness) -> Result<()> {
         h.driver.current_url().await?.fragment() == Some(&format!("vms/{id}")),
         "save did not navigate to VM detail"
     );
+    let network_id = spec["network"]["network"]
+        .as_str()
+        .context("network UUID")?;
+    let networks = h.api("/v1/networks").await?;
+    anyhow::ensure!(
+        networks[0]["id"] == network_id,
+        "VM did not retain network UUID"
+    );
+    h.navigate("Networks").await?;
+    h.row_button("form-net", "Edit").await?;
+    h.fill("network-name", "renamed-form-net").await?;
+    h.modal_button("Save network").await?;
+    h.absent(By::Css("[role='dialog']")).await?;
+    h.text("renamed-form-net").await?;
+    let renamed = h.api("/v1/networks").await?;
+    anyhow::ensure!(
+        renamed[0]["id"] == network_id,
+        "rename changed network identity"
+    );
+    let unchanged = h.api(&format!("/v1/vms/{id}")).await?;
+    anyhow::ensure!(
+        unchanged["spec"] == *spec,
+        "rename changed VM configuration"
+    );
+    h.driver.goto(format!("{}#vms/{id}", h.url)).await?;
+    h.element(By::Css(".vm-full-page")).await?;
+    h.text("renamed-form-net").await?;
+    h.screenshot("network-renamed-vm").await?;
     h.driver.goto(format!("{}#vms/{id}/edit", h.url)).await?;
     h.element(By::Css(".vm-editor-page")).await?;
     let runtime = h.driver.find(By::Css("input[name='runtime-mode']")).await?;
     anyhow::ensure!(!runtime.is_enabled().await?, "edit allowed runtime changes");
+    h.button("Network").await?;
+    h.element(By::Css(format!("#vm-network option[value='{network_id}']")))
+        .await?;
+    anyhow::ensure!(
+        h.value("vm-network").await? == network_id,
+        "edit lost the renamed network"
+    );
     h.fill("vm-memory", "1024").await?;
     h.button("Environment").await?;
     h.button("Configure environment").await?;

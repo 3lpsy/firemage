@@ -21,7 +21,11 @@ pub fn EgressFields(
         .as_ref()
         .and_then(|r| r.as_ref().ok())
         .and_then(|rows| rows.as_array())
-        .and_then(|rows| rows.iter().find(|row| text(row, "name") == name))
+        .and_then(|rows| {
+            rows.iter()
+                .find(|row| text(row, "id") == name)
+                .or_else(|| rows.iter().find(|row| text(row, "name") == name))
+        })
         .is_some_and(|row| row["policy"]["mode"] == "firemage-only");
     rsx! {
         if restricted && (fields.mode)() != "socket" {

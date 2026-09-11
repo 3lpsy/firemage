@@ -10,6 +10,7 @@ from .harness import wait_for
 def recovery(harness, target, gateway, network, policy, plain, tls, host_port):
     plain_port, tls_port = plain.server_address[1], tls.server_address[1]
     definition = next(item for item in harness.request("GET", "/v1/networks") if item["name"] == network)
+    definition.pop("id", None)
     network = "snapshot-source-network"
     definition["name"] = network
     harness.request("POST", "/v1/networks", definition)
@@ -55,7 +56,7 @@ def recovery(harness, target, gateway, network, policy, plain, tls, host_port):
     assert uploaded["source_vm_id"] is None and not uploaded["trusted"]
     spec["name"] = "restored-egress-copy"
     definition["name"] = "snapshot-target-network"
-    harness.request("POST", "/v1/networks", definition)
+    target_network = harness.request("POST", "/v1/networks", definition)
     harness.networks.append(definition["name"])
     spec["network"]["network"] = definition["name"]
     vm = harness.request("POST", "/v1/vms", spec)["id"]
@@ -67,7 +68,7 @@ def recovery(harness, target, gateway, network, policy, plain, tls, host_port):
         assert "must be trusted" in str(error), error
     harness.request("POST", f"/v1/snapshots/{uploaded['id']}/trust")
     restored_vm = harness.request("POST", f"/v1/vms/{vm}/snapshots/restore", {"snapshot_id": uploaded["id"]})
-    assert restored_vm["state"] == "paused" and restored_vm["spec"]["network"]["network"] == definition["name"], restored_vm
+    assert restored_vm["state"] == "paused" and restored_vm["spec"]["network"]["network"] == target_network["id"], restored_vm
     seed = harness.data / "vms" / vm / "seed.ext4"
     harness.request("DELETE", f"/v1/snapshots/{saved['id']}")
     harness.request("DELETE", f"/v1/snapshots/{uploaded['id']}")

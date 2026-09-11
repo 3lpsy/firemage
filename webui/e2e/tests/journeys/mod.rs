@@ -13,6 +13,7 @@ mod boot_inputs;
 mod egress;
 mod egress_controls;
 mod egress_loading;
+mod environment;
 pub use egress::*;
 
 mod registry;

@@ -24,6 +24,7 @@ mod isolation;
 mod launch;
 mod registry;
 
+mod catalog_alias;
 mod kernels;
 
 mod file_assets;

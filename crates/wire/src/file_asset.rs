@@ -28,6 +28,41 @@ pub struct FileAssetUpload {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct FileAssetImport {
+    pub alias: String,
+    pub filename: String,
+    pub url: String,
+    #[serde(default)]
+    pub sha256: Option<String>,
+}
+impl FileAssetImport {
+    pub fn validate(&self) -> anyhow::Result<()> {
+        FileAssetUpload {
+            alias: self.alias.clone(),
+            filename: self.filename.clone(),
+        }
+        .validate()?;
+        anyhow::ensure!(self.url.len() <= 4096, "asset URL is too long");
+        let url = url::Url::parse(&self.url)?;
+        anyhow::ensure!(
+            url.scheme() == "https"
+                && url.host_str().is_some()
+                && url.username().is_empty()
+                && url.password().is_none()
+                && url.fragment().is_none(),
+            "asset URL must use HTTPS without credentials or fragment"
+        );
+        if let Some(hash) = &self.sha256 {
+            anyhow::ensure!(
+                hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()),
+                "invalid asset SHA-256 digest"
+            );
+        }
+        Ok(())
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AssetAttachment {
     pub asset_id: String,
     pub destination: String,

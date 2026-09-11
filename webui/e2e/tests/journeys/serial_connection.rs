@@ -21,7 +21,7 @@ pub async fn connection(h: &Harness, id: &str, screenshot: &str) -> Result<()> {
     h.button("TTY Stream").await?;
     h.text("Connection failed").await?;
     h.element(By::XPath(
-        "//div[contains(@class,'serial-toolbar')]//button[normalize-space(.)='Reconnect']",
+        "//button[@aria-label='Copy TTY stream']/following-sibling::button[@aria-label='Reconnect TTY stream']",
     ))
     .await?
     .click()
@@ -37,17 +37,17 @@ pub async fn connection(h: &Harness, id: &str, screenshot: &str) -> Result<()> {
     h.text("Connection failed").await?;
     h.element(By::Css(".guest-terminal .xterm-fg-1")).await?;
     h.screenshot(&format!("{screenshot}-reconnect")).await?;
-    h.button("Reconnect").await?;
+    connection_action(h, "Reconnect").await?;
     h.text("Waiting for the VM to run.").await?;
-    h.button("Disconnect").await?;
+    connection_action(h, "Disconnect").await?;
     h.element(By::Css(".guest-terminal .xterm-fg-1")).await?;
     h.text("Disconnected").await?;
-    h.button("Connect").await?;
+    connection_action(h, "Connect").await?;
     h.text("Waiting for the VM to run.").await?;
     h.button("Serial output").await?;
     h.absent(By::Css(".guest-terminal .xterm-screen")).await?;
     h.element(By::XPath(
-        "//div[contains(@class,'serial-toolbar')]//button[normalize-space(.)='Refresh']",
+        "//button[@aria-label='Copy serial output']/preceding-sibling::button[@aria-label='Refresh serial output']",
     ))
     .await?
     .click()
@@ -64,6 +64,14 @@ pub async fn connection(h: &Harness, id: &str, screenshot: &str) -> Result<()> {
             "window.fetch = window.__serialConnection.original; delete window.__serialConnection",
             vec![],
         )
+        .await?;
+    Ok(())
+}
+
+async fn connection_action(h: &Harness, label: &str) -> Result<()> {
+    h.element(By::Css(format!("button[aria-label='{label} TTY stream']")))
+        .await?
+        .click()
         .await?;
     Ok(())
 }

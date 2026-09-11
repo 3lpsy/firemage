@@ -6,7 +6,7 @@ use axum::{
     http::{StatusCode, header},
     response::IntoResponse,
 };
-use firemage_wire::{FileAsset, FileAssetAlias, FileAssetLimits, FileAssetUpload};
+use firemage_wire::{FileAsset, FileAssetAlias, FileAssetImport, FileAssetLimits, FileAssetUpload};
 
 pub async fn limits(_identity: Identity, State(app): State<App>) -> Json<FileAssetLimits> {
     Json(FileAssetLimits {
@@ -15,8 +15,22 @@ pub async fn limits(_identity: Identity, State(app): State<App>) -> Json<FileAss
 }
 
 pub async fn list(identity: Identity, State(app): State<App>) -> Result<Json<Vec<FileAsset>>> {
-    let _guard = app.runtime.lock("file-assets").await;
-    Ok(Json(app.runtime.file_assets(&identity.user.id).await?))
+    Ok(Json(
+        app.runtime.refresh_file_assets(&identity.user.id).await?,
+    ))
+}
+pub async fn import(
+    identity: Identity,
+    State(app): State<App>,
+    Json(input): Json<FileAssetImport>,
+) -> Result<Json<FileAsset>> {
+    identity.ensure_admin()?;
+    let asset = app
+        .runtime
+        .import_file_asset(&identity.user.id, input)
+        .await?;
+    app.record(&identity, "asset.import", &asset.id).await?;
+    Ok(Json(asset))
 }
 pub async fn upload(
     identity: Identity,

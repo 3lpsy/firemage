@@ -2,6 +2,19 @@ use crate::Runtime;
 use firemage_wire::{NetworkAttachment, VmSpec};
 
 impl Runtime {
+    pub(crate) async fn normalize_network(
+        &self,
+        owner: &str,
+        spec: &mut VmSpec,
+    ) -> anyhow::Result<()> {
+        if let Some(attachment) = &mut spec.network {
+            attachment.network = firemage_queries::network(&self.db, owner, &attachment.network)
+                .await?
+                .id;
+        }
+        Ok(())
+    }
+
     pub(crate) async fn network_tap(
         &self,
         row: &firemage_orm::vms::Model,

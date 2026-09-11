@@ -26,7 +26,7 @@ pub fn Configuration(vm: Value, onedit: EventHandler<()>, onchanged: EventHandle
         .and_then(|result| result.as_ref().ok())
         .map(|value| text(value, "toml"));
     rsx! {
-        div { class: "heading compact",
+        div { class: "heading compact vm-tab-heading",
             h3 { "Configuration" }
             div { class: "actions wrap",
                 if auth.is_admin() {

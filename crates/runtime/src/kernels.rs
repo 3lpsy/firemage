@@ -1,6 +1,6 @@
 use crate::Runtime;
 use anyhow::Context;
-use firemage_wire::{Asset, Kernel, KernelAlias, VmSpec};
+use firemage_wire::{Asset, Kernel, KernelAlias, KernelImport, VmSpec};
 
 impl Runtime {
     pub fn kernel_name(&self, asset: &Asset) -> anyhow::Result<String> {
@@ -31,10 +31,26 @@ impl Runtime {
         }
         Ok(())
     }
-    // Callers hold the shared kernels lock across catalog and VM definition changes.
     pub async fn kernels(&self) -> anyhow::Result<Vec<Kernel>> {
+        let _guard = self.lock("kernels").await;
+        self.kernels_locked().await
+    }
+    // Callers hold the kernels lock across registration and catalog or VM changes.
+    pub(crate) async fn kernels_locked(&self) -> anyhow::Result<Vec<Kernel>> {
         let mut kernels = firemage_kernels::Catalog::open(&self.config.kernel_dir())?.list()?;
-        let aliases = firemage_queries::kernel_aliases(&self.db).await?;
+        let mut aliases = firemage_queries::kernel_aliases(&self.db).await?;
+        let mut used = aliases.iter().map(|row| row.alias.clone()).collect();
+        for kernel in &kernels {
+            if !aliases.iter().any(|row| row.name == kernel.name) {
+                let alias = crate::catalog_alias::available_alias(&kernel.name, &used);
+                firemage_queries::set_kernel_alias(&self.db, &kernel.name, Some(&alias)).await?;
+                used.insert(alias.clone());
+                aliases.push(firemage_orm::kernel_aliases::Model {
+                    name: kernel.name.clone(),
+                    alias,
+                });
+            }
+        }
         let mut counts = std::collections::HashMap::<String, usize>::new();
         for row in firemage_queries::vms(&self.db, None).await? {
             let spec: VmSpec = serde_json::from_str(&row.spec)?;
@@ -56,23 +72,88 @@ impl Runtime {
         Ok(kernels)
     }
     pub async fn kernel(&self, name: &str) -> anyhow::Result<Kernel> {
+        let _guard = self.lock("kernels").await;
+        self.kernel_locked(name).await
+    }
+    async fn kernel_locked(&self, name: &str) -> anyhow::Result<Kernel> {
         firemage_wire::ensure_kernel_name(name)?;
-        self.kernels()
+        self.kernels_locked()
             .await?
             .into_iter()
             .find(|kernel| kernel.name == name)
             .ok_or_else(|| firemage_queries::NotFound("kernel").into())
     }
+    pub async fn upload_kernel(
+        &self,
+        name: &str,
+        alias: &str,
+        body: Vec<u8>,
+    ) -> anyhow::Result<Kernel> {
+        firemage_wire::ensure_kernel_name(name)?;
+        let _guard = self.lock("kernels").await;
+        self.ensure_kernel_alias_available_locked(name, alias)
+            .await?;
+        let catalog = firemage_kernels::Catalog::open(&self.config.kernel_dir())?;
+        let filename = name.to_owned();
+        tokio::task::spawn_blocking(move || catalog.upload(&filename, &body)).await??;
+        self.finish_kernel_locked(name, alias).await
+    }
+    pub async fn import_kernel(&self, input: &KernelImport) -> anyhow::Result<Kernel> {
+        firemage_wire::ensure_kernel_name(&input.name)?;
+        {
+            let _guard = self.lock("kernels").await;
+            self.ensure_kernel_alias_available_locked(&input.name, &input.alias)
+                .await?;
+        }
+        let catalog = firemage_kernels::Catalog::open(&self.config.kernel_dir())?;
+        let file = firemage_kernels::fetch(&catalog, input).await?;
+        let _guard = self.lock("kernels").await;
+        self.ensure_kernel_alias_available_locked(&input.name, &input.alias)
+            .await?;
+        catalog.publish(&input.name, file)?;
+        self.finish_kernel_locked(&input.name, &input.alias).await
+    }
+    async fn ensure_kernel_alias_available_locked(
+        &self,
+        name: &str,
+        alias: &str,
+    ) -> anyhow::Result<()> {
+        KernelAlias {
+            alias: Some(alias.into()),
+        }
+        .validate()?;
+        self.kernels_locked().await?;
+        let aliases = firemage_queries::kernel_aliases(&self.db).await?;
+        anyhow::ensure!(
+            !aliases
+                .iter()
+                .any(|row| row.alias == alias && row.name != name),
+            "kernel alias is already in use"
+        );
+        Ok(())
+    }
+    async fn finish_kernel_locked(&self, name: &str, alias: &str) -> anyhow::Result<Kernel> {
+        if let Err(error) = firemage_queries::set_kernel_alias(&self.db, name, Some(alias)).await {
+            firemage_kernels::Catalog::open(&self.config.kernel_dir())?
+                .remove(name)
+                .context("failed to remove kernel after alias registration failed")?;
+            return Err(error);
+        }
+        self.kernel_locked(name).await
+    }
     pub async fn alias_kernel(&self, name: &str, alias: &KernelAlias) -> anyhow::Result<Kernel> {
         let _guard = self.lock("kernels").await;
         alias.validate()?;
-        self.kernel(name).await?;
-        firemage_queries::set_kernel_alias(&self.db, name, alias.alias.as_deref()).await?;
-        self.kernel(name).await
+        self.kernel_locked(name).await?;
+        let value = alias.alias.as_deref().context("kernel alias is required")?;
+        self.ensure_kernel_alias_available_locked(name, value)
+            .await?;
+        firemage_queries::set_kernel_alias(&self.db, name, Some(value)).await?;
+        self.kernel_locked(name).await
     }
     pub async fn delete_kernel(&self, name: &str) -> anyhow::Result<()> {
         let _guard = self.lock("kernels").await;
-        let kernel = self.kernel(name).await?;
+        let kernel = self.kernel_locked(name).await?;
         anyhow::ensure!(
             kernel.vm_count == 0,
             "kernel is referenced by {} VM(s); change or delete those VM definitions first",

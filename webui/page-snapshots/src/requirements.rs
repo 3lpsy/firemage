@@ -17,7 +17,7 @@ pub fn Requirements(snapshot: Value) -> Element {
             dl { class: "snapshot-facts",
                 dt { "vCPUs" } dd { r#"{snapshot["vcpus"]}"# }
                 dt { "Memory" } dd { r#"{snapshot["memory_mib"]} MiB"# }
-                dt { "Saved network" } dd { if network.is_null() { "None" } else { r#"{text(network, "network")}"# } }
+                dt { "Saved network" } dd { if network.is_null() { "None" } else { r#"{snapshot["network_definition"]["name"].as_str().unwrap_or_else(|| network["network"].as_str().unwrap_or_default())}"# } }
                 if !definition.is_null() {
                     dt { "Subnet" } dd { class: "mono", r#"{text(definition, "subnet")}"# }
                     dt { "Gateway" } dd { class: "mono", r#"{text(definition, "gateway")}"# }

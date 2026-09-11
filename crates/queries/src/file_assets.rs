@@ -36,6 +36,13 @@ pub async fn insert_file_asset(
         filename: row.filename.clone(),
     }
     .validate()?;
+    if let Some(name) = &row.storage_name {
+        firemage_wire::FileAssetUpload {
+            alias: row.alias.clone(),
+            filename: name.clone(),
+        }
+        .validate()?;
+    }
     anyhow::ensure!(
         row.size_bytes >= 0
             && row.sha256.len() == 64
@@ -47,6 +54,7 @@ pub async fn insert_file_asset(
         owner_id: Set(row.owner_id),
         alias: Set(row.alias),
         filename: Set(row.filename),
+        storage_name: Set(row.storage_name),
         size_bytes: Set(row.size_bytes),
         sha256: Set(row.sha256),
         created_at: Set(row.created_at),
@@ -54,6 +62,14 @@ pub async fn insert_file_asset(
     .exec(db)
     .await?;
     Ok(())
+}
+pub async fn all_file_asset_storage_names(db: &DatabaseConnection) -> anyhow::Result<Vec<String>> {
+    Ok(file_assets::Entity::find()
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|row| row.storage_name.unwrap_or(row.id))
+        .collect())
 }
 pub async fn alias_file_asset(
     db: &DatabaseConnection,

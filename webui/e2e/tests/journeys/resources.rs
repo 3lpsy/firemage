@@ -92,17 +92,19 @@ pub async fn resources(h: &Harness) -> Result<()> {
         .click()
         .await?;
     h.element(By::Css(".vm-detail")).await?;
-    h.element(By::Css("button[aria-label='Close VM details']"))
+    h.element(By::Css(".vm-row td:nth-child(2)"))
         .await?
         .click()
         .await?;
     h.absent(By::Css(".vm-detail")).await?;
     for key in [Key::Enter, Key::Space] {
-        h.element(By::Css(".vm-row .table-link"))
-            .await?
-            .send_keys(key)
-            .await?;
-        h.element(By::Css(".vm-row .table-link[aria-expanded='true']"))
+        h.element(By::Css(
+            "button[aria-label='Toggle offline-harness details']",
+        ))
+        .await?
+        .send_keys(key)
+        .await?;
+        h.element(By::Css(".vm-row button[aria-expanded='true']"))
             .await?;
         h.element(By::Css("button[aria-label='Close VM details']"))
             .await?
@@ -110,14 +112,23 @@ pub async fn resources(h: &Harness) -> Result<()> {
             .await?;
         h.absent(By::Css(".vm-detail")).await?;
     }
+    h.element(By::Css(".vm-row a.table-link"))
+        .await?
+        .click()
+        .await?;
+    h.element(By::Css(".vm-full-page")).await?;
+    h.absent(By::Css(".vm-detail:not(.vm-full-page)")).await?;
+    h.navigate("Virtual machines").await?;
     h.element(By::Css(".vm-open-page")).await?.click().await?;
     h.element(By::Css(".vm-full-page")).await?;
     h.absent(By::Css(".vm-detail:not(.vm-full-page)")).await?;
     h.navigate("Virtual machines").await?;
-    h.element(By::Css(".vm-row-chevron > svg"))
-        .await?
-        .click()
-        .await?;
+    h.element(By::Css(
+        "button[aria-label='Toggle offline-harness details']",
+    ))
+    .await?
+    .click()
+    .await?;
     h.text("No network").await?;
     h.element(By::Css(".vm-detail a[aria-label='Open full page']"))
         .await?
@@ -136,7 +147,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
     h.button("Save configuration").await?;
     h.absent(By::Css(".vm-editor-page")).await?;
     h.navigate("Virtual machines").await?;
-    h.button("offline-edited").await?;
+    h.vm_details("offline-edited").await?;
     h.text("768 MiB").await?;
     let vms = h.api("/v1/vms").await?;
     anyhow::ensure!(
@@ -156,7 +167,7 @@ pub async fn resources(h: &Harness) -> Result<()> {
         .await?
         .click()
         .await?;
-    h.button("offline-edited").await?;
+    h.vm_details("offline-edited").await?;
     h.button("Start").await?;
     h.element(By::Css(".vm-detail .status-failed")).await?;
     h.element(By::Css(".vm-detail [role='alert']")).await?;

@@ -75,7 +75,7 @@ async fn catalog_http_enforces_auth_permissions_body_limits_aliases_and_referenc
     }
     let admin = Some(tokens[0].as_str());
     let reader = Some(tokens[1].as_str());
-    let upload = "/v1/kernels/vmlinux/content";
+    let upload = "/v1/kernels/vmlinux/content?alias=stable";
     assert_eq!(
         request(&router, "PUT", upload, reader, b"kernel".to_vec())
             .await
@@ -86,6 +86,58 @@ async fn catalog_http_enforces_auth_permissions_body_limits_aliases_and_referenc
     let (status, kernel) = request(&router, "PUT", upload, admin, vec![1; 9 * 1024 * 1024]).await;
     assert_eq!(status, StatusCode::OK, "{kernel}");
     assert_eq!(kernel["size_bytes"], 9 * 1024 * 1024);
+    assert_eq!(kernel["alias"], "stable");
+    for path in [
+        "/v1/kernels/missing/content",
+        "/v1/kernels/missing/content?alias=",
+    ] {
+        assert!(
+            request(&router, "PUT", path, admin, b"kernel".to_vec())
+                .await
+                .0
+                .is_client_error()
+        );
+    }
+    assert!(
+        request(
+            &router,
+            "PUT",
+            "/v1/kernels/duplicate/content?alias=stable",
+            admin,
+            b"kernel".to_vec()
+        )
+        .await
+        .0
+        .is_client_error()
+    );
+    for value in [json!({}), json!({"alias":null}), json!({"alias":""})] {
+        assert!(
+            request(
+                &router,
+                "PUT",
+                "/v1/kernels/vmlinux",
+                admin,
+                value.to_string().into_bytes()
+            )
+            .await
+            .0
+            .is_client_error()
+        );
+    }
+    assert!(
+        request(
+            &router,
+            "POST",
+            "/v1/kernels/import",
+            admin,
+            json!({"name":"missing", "url":"https://example.com/kernel", "sha256":"0".repeat(64)})
+                .to_string()
+                .into_bytes()
+        )
+        .await
+        .0
+        .is_client_error()
+    );
     assert_eq!(
         request(&router, "GET", "/v1/kernels", reader, vec![])
             .await

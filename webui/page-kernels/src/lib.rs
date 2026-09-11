@@ -18,10 +18,13 @@ pub fn Kernels() -> Element {
     let mut busy = use_signal(|| false);
     rsx! {
         div { class: "heading",
-            div { class: "actions",
-                h1 { "Kernels" }
-                Info { title: "Kernel library",
-                    "This list reads the configured kernel directory, including files installed directly on the server. Uploads and downloads stay in that directory. Aliases are display names; VMs keep their selected filename. Remove VM references before deleting a kernel."
+            div {
+                div { class: "eyebrow", "COMPUTE" }
+                div { class: "actions",
+                    h1 { "Kernels" }
+                    Info { title: "Kernel library",
+                        "This list reads the configured kernel directory, including files installed directly on the server. Uploads and downloads stay in that directory. Aliases are display names; VMs keep their selected filename. Remove VM references before deleting a kernel."
+                    }
                 }
             }
             div { class: "actions",

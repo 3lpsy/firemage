@@ -12,9 +12,10 @@ impl Runtime {
         let _kernels = self.lock("kernels").await;
         let row = firemage_queries::vm(&self.db, owner, id).await?;
         let mut spec: VmSpec = serde_json::from_str(&row.spec)?;
-        let aliases = firemage_queries::kernel_aliases(&self.db).await?;
         let kernel_alias = if let Some(kernel) = spec.kernel.take() {
             let name = self.kernel_name(&kernel)?;
+            self.kernels_locked().await?;
+            let aliases = firemage_queries::kernel_aliases(&self.db).await?;
             Some(
                 aliases
                     .iter()
@@ -46,6 +47,11 @@ impl Runtime {
         } else {
             None
         };
+        if let Some(network) = &mut spec.network {
+            network.network = firemage_queries::network(&self.db, owner, &network.network)
+                .await?
+                .name;
+        }
         let document = VmConfigDocument {
             version: 1,
             kernel_alias,
@@ -93,6 +99,7 @@ impl Runtime {
             }
         }
         if let Some(alias) = &doc.kernel_alias {
+            self.kernels().await?;
             let aliases = firemage_queries::kernel_aliases(&self.db).await?;
             let kernel = aliases.iter().find(|item| &item.alias == alias)
                 .with_context(|| format!("kernel alias {alias:?} was not found; add it in Kernels or edit this reference"))?;
@@ -117,8 +124,10 @@ impl Runtime {
                 .push(attachment.resolve(asset.id.clone()));
             references.push(reference("Asset", &attachment.alias));
         }
-        if let Some(net) = &doc.vm.network {
-            references.push(reference("Network", &net.network));
+        if let Some(net) = &mut doc.vm.network {
+            let network = firemage_queries::network_by_name(&self.db, owner, &net.network).await?;
+            references.push(reference("Network", &network.name));
+            net.network = network.id;
             if existing.is_none() {
                 doc.vm.network = Some(
                     self.suggest_network_address(owner, &net.network, None)

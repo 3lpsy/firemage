@@ -2,32 +2,33 @@ use crate::{App, error::Result, identity::Identity};
 use axum::{
     Json,
     body::Bytes,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 use firemage_wire::{Kernel, KernelAlias, KernelImport};
 
 pub async fn list(_identity: Identity, State(app): State<App>) -> Result<Json<Vec<Kernel>>> {
-    let _guard = app.runtime.lock("kernels").await;
     Ok(Json(app.runtime.kernels().await?))
 }
 pub async fn upload(
     identity: Identity,
     State(app): State<App>,
     Path(name): Path<String>,
+    Query(alias): Query<KernelAlias>,
     body: Bytes,
 ) -> Result<Json<Kernel>> {
     identity.ensure_admin()?;
-    firemage_wire::ensure_kernel_name(&name)?;
-    let _guard = app.runtime.lock("kernels").await;
-    let catalog = firemage_kernels::Catalog::open(&app.runtime.config.kernel_dir())?;
-    let filename = name.clone();
-    tokio::task::spawn_blocking(move || catalog.upload(&filename, &body))
-        .await
-        .map_err(anyhow::Error::from)??;
-    firemage_queries::set_kernel_alias(&app.runtime.db, &name, None).await?;
+    alias.validate()?;
+    let kernel = app
+        .runtime
+        .upload_kernel(
+            &name,
+            alias.alias.as_deref().unwrap_or_default(),
+            body.to_vec(),
+        )
+        .await?;
     app.record(&identity, "kernel.upload", &name).await?;
-    Ok(Json(app.runtime.kernel(&name).await?))
+    Ok(Json(kernel))
 }
 pub async fn import(
     identity: Identity,
@@ -35,13 +36,9 @@ pub async fn import(
     Json(input): Json<KernelImport>,
 ) -> Result<Json<Kernel>> {
     identity.ensure_admin()?;
-    let catalog = firemage_kernels::Catalog::open(&app.runtime.config.kernel_dir())?;
-    let file = firemage_kernels::fetch(&catalog, &input).await?;
-    let _guard = app.runtime.lock("kernels").await;
-    catalog.publish(&input.name, file)?;
-    firemage_queries::set_kernel_alias(&app.runtime.db, &input.name, None).await?;
+    let kernel = app.runtime.import_kernel(&input).await?;
     app.record(&identity, "kernel.import", &input.name).await?;
-    Ok(Json(app.runtime.kernel(&input.name).await?))
+    Ok(Json(kernel))
 }
 pub async fn alias(
     identity: Identity,

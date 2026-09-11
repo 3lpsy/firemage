@@ -119,17 +119,16 @@ async fn portable_roundtrip_resolves_owner_aliases_without_exporting_secret_valu
             .await
             .is_err()
     );
-    runtime
-        .alias_kernel("vmlinux-test", &KernelAlias { alias: None })
+    // An older database may have a directory kernel without alias metadata.
+    firemage_queries::set_kernel_alias(&runtime.db, "vmlinux-test", None)
         .await
         .unwrap();
     assert!(
         runtime
             .export_vm_config(&owner, &vm.id)
             .await
-            .unwrap_err()
-            .to_string()
-            .contains("assign an alias")
+            .unwrap()
+            .contains("kernel_alias = \"vmlinux-test\"")
     );
     assert!(
         runtime

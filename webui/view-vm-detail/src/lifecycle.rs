@@ -5,12 +5,17 @@ pub fn controls(vm: &Value, networks: &Value) -> Vec<(&'static str, &'static str
     let spec = &vm["spec"];
     let editable = matches!(state, "defined" | "stopped" | "failed");
     let unrestricted_network = spec["network"].is_null()
-        || networks.as_array().is_some_and(|rows| {
-            rows.iter().any(|net| {
-                net["name"] == spec["network"]["network"]
-                    && net["policy"]["mode"] != "firemage-only"
+        || networks
+            .as_array()
+            .and_then(|rows| {
+                rows.iter()
+                    .find(|net| net["id"] == spec["network"]["network"])
+                    .or_else(|| {
+                        rows.iter()
+                            .find(|net| net["name"] == spec["network"]["network"])
+                    })
             })
-        });
+            .is_some_and(|net| net["policy"]["mode"] != "firemage-only");
     let manual = matches!(
         spec["security"]["mode"].as_str(),
         Some("trusted" | "external")
@@ -97,6 +102,25 @@ mod tests {
             external
                 .iter()
                 .find(|(_, command, _)| *command == "shutdown")
+                .unwrap()
+                .2
+        );
+    }
+    #[test]
+    fn network_uuid_takes_precedence_over_another_networks_display_name() {
+        let selected = "10000000-0000-4000-8000-000000000001";
+        let networks = json!([
+            {"id":"10000000-0000-4000-8000-000000000002", "name":selected,"policy":{"mode":"unrestricted"}},
+            {"id":selected,"name":"review","policy":{"mode":"firemage-only"}}
+        ]);
+        let actions = controls(
+            &json!({"state":"stopped","spec":{"security":{"mode":"trusted"},"network":{"network":selected}}}),
+            &networks,
+        );
+        assert!(
+            !actions
+                .iter()
+                .find(|(_, action, _)| *action == "launch")
                 .unwrap()
                 .2
         );

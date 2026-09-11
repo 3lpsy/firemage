@@ -1,6 +1,6 @@
 use crate::{catalog_model, drawer::Drawer, policy_page::PolicyEditor, proxy_editor::ProxyEditor};
 use dioxus::prelude::*;
-use firemage_webui_component_controls::{Empty, Notice};
+use firemage_webui_component_controls::{Empty, Icon, Notice};
 use firemage_webui_provider_api::{get, text};
 use firemage_webui_provider_auth::use_auth;
 use serde_json::Value;
@@ -62,7 +62,11 @@ fn Inventory(proxies: bool, selected: String) -> Element {
     rsx! {
         style { {include_str!("catalog.css")} }
         section { class: "egress-catalog-page",
-            div { class: "heading", h1 { "Egress" }
+            div { class: "heading",
+                div {
+                    div { class: "eyebrow", "CONNECTIVITY" }
+                    h1 { "Egress" }
+                }
                 div { class: "actions",
                     button { onclick: move |_| { rows.restart(); refresh += 1; }, "Refresh egress" }
                     if auth.is_admin() { button { class: "primary", onclick: move |_| if proxies { editing.set(Some(Value::Null)); } else { navigate("policies/new"); },
@@ -88,12 +92,20 @@ fn Inventory(proxies: bool, selected: String) -> Element {
                                         thead { tr { th { "Alias" } th { if proxies { "Endpoint" } else { "HTTP rules / tunnels" } } if proxies { th { "Policies" } } th { "VMs" } th { "" } } }
                                         tbody {
                                             for row in filtered {
-                                                tr { key: "{text(row,\"id\")}", class: if text(row,"id") == selected { "selected" },
-                                                    onclick: { let id = text(row,"id"); move |_| navigate(&format!("{kind}/{id}")) },
-                                                    td { button { class: "quiet", "{text(row,\"alias\")}" } }
+                                                tr { key: "{text(row,\"id\")}", class: if text(row,"id") == selected { "vm-row selected" } else { "vm-row" },
+                                                    onclick: { let target = if text(row,"id") == selected { kind.into() } else { format!("{kind}/{}", text(row,"id")) }; move |_| navigate(&target) },
+                                                    td { a { class: "table-link", href: format!("#egress/{kind}/{}", text(row,"id")),
+                                                        "aria-expanded": (text(row,"id") == selected).to_string(), onclick: move |event| event.stop_propagation(), "{text(row,\"alias\")}" } }
                                                     td { if proxies { "{text(&row[\"proxy\"],\"url\")}" } else { "{row[\"policy\"][\"http\"][\"rules\"].as_array().map_or(0,Vec::len)} / {row[\"policy\"][\"tunnels\"].as_array().map_or(0,Vec::len)}" } }
                                                     if proxies { td { "{catalog_model::usage(row,\"policy\")}" } }
-                                                    td { "{catalog_model::usage(row,\"vm\")}" } td { "›" }
+                                                    td { "{catalog_model::usage(row,\"vm\")}" }
+                                                    td { class: "vm-row-chevron",
+                                                        button { class: "icon-button", title: "Toggle egress details", "aria-label": format!("Toggle {} details", text(row,"alias")),
+                                                            "aria-expanded": (text(row,"id") == selected).to_string(),
+                                                            onclick: { let target = if text(row,"id") == selected { kind.into() } else { format!("{kind}/{}", text(row,"id")) }; move |event| { event.stop_propagation(); navigate(&target); } },
+                                                            Icon { name: "chevron-right", size: 16 }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

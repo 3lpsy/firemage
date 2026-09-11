@@ -227,6 +227,7 @@ async fn full_size_assets_fit_boot_budget_without_large_test_allocations() {
             owner_id: owner.clone(),
             alias: asset.alias,
             filename: asset.filename,
+            storage_name: None,
             size_bytes: runtime.config.asset_max_bytes() as i64,
             sha256: asset.sha256,
             created_at: asset.created_at,
@@ -264,4 +265,127 @@ async fn lowering_upload_limit_still_allows_deleting_unreferenced_assets() {
     runtime.delete_file_asset(&owner, &asset.id).await.unwrap();
     assert!(runtime.file_assets(&owner).await.unwrap().is_empty());
     assert!(!runtime.config.asset_dir().join(asset.id).exists());
+}
+
+#[tokio::test]
+async fn server_files_register_once_with_unique_aliases_and_keep_their_disk_names() {
+    let (_directory, runtime, owner, other) = fixture().await;
+    runtime
+        .upload_file_asset(&owner, upload("config.json"), b"existing".to_vec())
+        .await
+        .unwrap();
+    let foreign = runtime
+        .upload_file_asset(&other, upload("foreign"), b"foreign".to_vec())
+        .await
+        .unwrap();
+    let path = runtime.config.asset_dir().join("config.json");
+    std::fs::write(&path, b"server file").unwrap();
+    let rows = runtime.refresh_file_assets(&owner).await.unwrap();
+    assert_eq!(rows.len(), 2);
+    let imported = rows
+        .iter()
+        .find(|row| row.alias == "config.json-1")
+        .unwrap();
+    assert_eq!(imported.filename, "config.json");
+    assert_eq!(
+        runtime
+            .file_asset_content(&owner, &imported.id)
+            .await
+            .unwrap(),
+        b"server file"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), b"server file");
+    assert!(
+        runtime
+            .file_asset_content(&owner, &foreign.id)
+            .await
+            .is_err()
+    );
+    assert_eq!(runtime.refresh_file_assets(&owner).await.unwrap(), rows);
+    runtime
+        .validate_asset_attachments(&owner, &attached(&imported.id))
+        .await
+        .unwrap();
+    runtime
+        .delete_file_asset(&owner, &imported.id)
+        .await
+        .unwrap();
+    assert!(!path.exists());
+    assert_eq!(runtime.refresh_file_assets(&owner).await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn server_file_discovery_requires_admin_and_rejects_links() {
+    let (directory, runtime, owner, _) = fixture().await;
+    let reader = firemage_queries::add_user(&runtime.db, "reader".into(), None, false, None)
+        .await
+        .unwrap();
+    std::fs::create_dir_all(runtime.config.asset_dir()).unwrap();
+    let path = runtime.config.asset_dir().join("manual.txt");
+    std::fs::write(&path, b"server file").unwrap();
+    let outside = directory.path().join("private");
+    std::fs::write(&outside, b"private").unwrap();
+    std::os::unix::fs::symlink(&outside, runtime.config.asset_dir().join("linked")).unwrap();
+    std::fs::hard_link(&outside, runtime.config.asset_dir().join("hardlinked")).unwrap();
+    assert!(
+        runtime
+            .refresh_file_assets(&reader.id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let rows = runtime.refresh_file_assets(&owner).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].alias, "manual.txt");
+    assert!(
+        runtime
+            .refresh_file_assets(&reader.id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let input = firemage_wire::FileAssetImport {
+        alias: "remote".into(),
+        filename: "file".into(),
+        url: "https://127.0.0.1/private".into(),
+        sha256: None,
+    };
+    assert!(runtime.import_file_asset(&owner, input).await.is_err());
+    assert_eq!(runtime.refresh_file_assets(&owner).await.unwrap(), rows);
+}
+
+#[tokio::test]
+async fn discovery_never_adopts_orphan_managed_uploads() {
+    let (_directory, runtime, owner, other) = fixture().await;
+    let registered = runtime
+        .upload_file_asset(&owner, upload("registered"), b"owned".to_vec())
+        .await
+        .unwrap();
+    let orphan = uuid::Uuid::new_v4().to_string();
+    let path = runtime.config.asset_dir().join(&orphan);
+    std::fs::write(&path, b"interrupted private upload").unwrap();
+    std::fs::write(
+        runtime.config.asset_dir().join("manual.txt"),
+        b"server file",
+    )
+    .unwrap();
+
+    let foreign = runtime.refresh_file_assets(&other).await.unwrap();
+    assert_eq!(foreign.len(), 1);
+    assert_eq!(foreign[0].filename, "manual.txt");
+    assert_eq!(
+        runtime.refresh_file_assets(&owner).await.unwrap(),
+        vec![registered.clone()]
+    );
+    for admin in [&owner, &other] {
+        assert!(runtime.file_asset_content(admin, &orphan).await.is_err());
+    }
+    assert_eq!(
+        runtime
+            .file_asset_content(&owner, &registered.id)
+            .await
+            .unwrap(),
+        b"owned"
+    );
+    assert_eq!(std::fs::read(path).unwrap(), b"interrupted private upload");
 }

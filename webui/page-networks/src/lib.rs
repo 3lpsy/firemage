@@ -14,7 +14,7 @@ pub fn Networks() -> Element {
     let auth = use_auth();
     let mut refresh = use_signal(|| 0);
     let mut editor = use_signal(|| None::<Value>);
-    let mut deleting = use_signal(String::new);
+    let mut deleting = use_signal(|| None::<Value>);
     let mut error = use_signal(String::new);
     let rows = use_resource(move || {
         let _ = refresh();
@@ -95,8 +95,8 @@ pub fn Networks() -> Element {
                                                 button {
                                                     class: "danger subtle",
                                                     onclick: {
-                                                        let name = text(row, "name");
-                                                        move |_| deleting.set(name.clone())
+                                                        let row = row.clone();
+                                                        move |_| deleting.set(Some(row.clone()))
                                                     },
                                                     "Delete"
                                                 }
@@ -126,15 +126,15 @@ pub fn Networks() -> Element {
                 },
             }
         }
-        if !deleting().is_empty() {
+        if let Some(row) = deleting() {
             Confirm {
                 title: "Delete network?",
-                description: format!("Remove {}? Detach it from all VMs first.", deleting()),
+                description: format!("Remove {}? Detach it from all VMs first.", text(&row, "name")),
                 label: "Delete network",
-                onclose: move |_| deleting.set(String::new()),
+                onclose: move |_| deleting.set(None),
                 onconfirm: move |_| {
-                    let name = deleting();
-                    deleting.set(String::new());
+                    let name = text(&row, "id");
+                    deleting.set(None);
                     spawn(async move {
                         match request(
                                 "DELETE",
