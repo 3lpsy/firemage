@@ -72,14 +72,11 @@ fn Browser(id: String) -> Element {
                     nav { class: "guest-file-breadcrumbs", "aria-label": "Guest file path",
                         for (index, crumb) in path.iter().enumerate() {
                             if index > 1 { span { " / " } }
-                            if index + 1 == path.len() {
-                                span { "aria-current": "page", "{visible_name(&crumb.name)}" }
-                            } else {
-                                a {
-                                    href: format!("#vms/{}", firemage_webui_provider_api::encode(&id)),
-                                    onclick: { let path = path[..=index].to_vec(); move |event| { if event.modifiers().is_empty() { event.prevent_default(); navigate.call(path.clone()); } } },
-                                    "{visible_name(&crumb.name)}"
-                                }
+                            button {
+                                class: "quiet",
+                                disabled: index + 1 == path.len(),
+                                onclick: { let path = path[..=index].to_vec(); move |_| navigate.call(path.clone()) },
+                                "{visible_name(&crumb.name)}"
                             }
                         }
                     }
